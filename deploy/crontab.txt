@@ -1,0 +1,9 @@
+# factory dashboard, run from ~/factory-live (a clone detached at origin/main, never edited by hand).
+# Install: see README "Running live".
+*/10 * * * * /usr/bin/python3 $HOME/factory-live/bin/factory build >> $HOME/.factory/build.log 2>&1 # factory-build
+*/30 * * * * /usr/bin/python3 $HOME/factory-live/bin/factory autopilot run >> $HOME/.factory/autopilot.log 2>&1 # factory-autopilot
+*/15 * * * * /usr/bin/python3 $HOME/factory-live/bin/factory chatscan >> $HOME/.factory/chatscan.log 2>&1 # factory-chatscan
+0 7 * * * /usr/bin/python3 $HOME/factory-live/bin/factory sweep run >> $HOME/.factory/sweep.log 2>&1 # factory-sweep
+*/5 * * * * /usr/bin/python3 $HOME/factory-live/bin/factory relay retry >> $HOME/.factory/relay.log 2>&1 # factory-relay
+*/5 * * * * $HOME/factory-live/deploy/watchdog.sh # factory-watchdog
+@reboot $HOME/factory-live/deploy/watchdog.sh # factory-watchdog-boot
