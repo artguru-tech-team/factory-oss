@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Factory — Release Manager</title>
+<style>
+:root{
+  --void:#08090a; --carbon:#0f1011; --obsidian:#161718; --graphite:#23252a; --smoke:#383b3f;
+  --ash:#62666d; --fog:#8a8f98; --mist:#d0d6e0; --bone:#e5e5e6; --paper:#fff;
+  --lime:#e4f222; --green:#27a644; --red:#eb5757; --teal:#02b8cc; --iris:#6366f1; --lav:#8b5cf6;
+  --orange:#f2994a;
+  --wash:rgba(255,255,255,.05); --wash2:rgba(255,255,255,.02); --line:rgba(255,255,255,.08);
+  --sans:"Inter Variable","InterVariable",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --mono:"Berkeley Mono","JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--void);color:var(--mist);font:400 14px/1.5 var(--sans);font-feature-settings:"cv01","ss03","zero";-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;scrollbar-color:var(--graphite) var(--void)}
+body{margin:0;font-variant-numeric:tabular-nums}
+::selection{background:rgba(99,102,241,.4);color:var(--paper)}
+a{color:var(--mist);text-decoration:none} a:hover{color:var(--paper)}
+:focus-visible{outline:1.5px solid var(--mist);outline-offset:2px;border-radius:4px}
+button{font:inherit;color:inherit}
+.mono{font-family:var(--mono);letter-spacing:-.013em}
+.fog{color:var(--fog)} .ash{color:var(--ash)}
+h1,h2,h3{font-weight:510;color:var(--paper);margin:0;letter-spacing:-.011em}
+h2{font-size:13px;color:var(--mist);display:flex;gap:8px;align-items:center;margin:0 0 8px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:6px;border:1px solid var(--graphite);background:transparent;color:var(--mist);font-size:13px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn:hover{background:var(--wash);color:var(--paper)}
+.btn.primary{background:var(--lime);color:var(--void);border-color:var(--lime);font-weight:510}
+.btn.primary:hover{background:#eef75a}
+.btn.danger{background:rgba(235,87,87,.15);color:var(--red);border-color:rgba(235,87,87,.4)}
+.btn.danger:hover{background:rgba(235,87,87,.25);color:#fff}
+.btn.active{background:var(--paper);color:var(--void);font-weight:510;border-color:var(--paper)}
+.btn-sm{height:26px;padding:0 8px;font-size:12px;border-radius:5px}
+
+/* shell layout */
+.app{display:grid;grid-template-columns:1fr;min-height:100dvh}
+.side{display:none}
+.topbar{position:sticky;top:0;z-index:10;background:rgba(8,9,10,.94);backdrop-filter:blur(8px);border-bottom:.5px solid var(--graphite)}
+.topbar-in{display:flex;align-items:center;gap:12px;height:52px;padding:0 16px}
+.topbar h1{font-size:15px;display:flex;align-items:center;gap:8px}
+.topbar .sub{font-size:12px;color:var(--fog)}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+main{padding:16px 16px 64px;min-width:0;max-width:1440px;margin:0 auto}
+
+@media (min-width:960px){
+  .app{grid-template-columns:220px 1fr}
+  .side{display:flex;flex-direction:column;gap:2px;padding:14px 10px;background:var(--carbon);border-right:.5px solid var(--graphite);position:sticky;top:0;height:100dvh}
+  .side .brand{display:flex;gap:8px;align-items:center;color:var(--paper);font-weight:510;font-size:14px;padding:6px 8px 14px}
+  .side .grp{font-size:11px;color:var(--ash);padding:14px 8px 4px;font-weight:510;text-transform:uppercase;letter-spacing:.04em}
+  .nav{display:flex;align-items:center;gap:9px;height:32px;padding:0 8px;border-radius:6px;color:var(--mist);font-size:13px;background:none;border:0;cursor:pointer;width:100%;text-align:left;transition:background .15s}
+  .nav:hover{background:var(--wash)}
+  .nav[aria-current=page]{background:var(--obsidian);color:var(--paper);font-weight:510}
+  .nav svg{color:var(--fog);flex:none}
+  .nav .cnt{margin-left:auto;font:400 11px var(--mono);min-width:18px;height:18px;padding:0 5px;border-radius:4px;display:inline-grid;place-items:center;background:var(--graphite);color:var(--fog)}
+  .side .foot{margin-top:auto;font-size:11px;color:var(--ash);padding:8px;line-height:1.4}
+  main{padding:20px 32px 64px}
+  .topbar-in{padding:0 32px}
+}
+
+/* scenario bar */
+.scenario-panel{background:var(--carbon);border-radius:10px;box-shadow:inset 0 0 0 1px var(--graphite);padding:10px 14px;margin-bottom:18px;display:flex;flex-direction:column;gap:8px}
+@media (min-width:768px){.scenario-panel{flex-direction:row;align-items:center;justify-content:space-between}}
+.scenario-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:510;color:var(--fog);text-transform:uppercase;letter-spacing:.04em}
+.scenarios{display:flex;gap:6px;flex-wrap:wrap}
+.sc-tab{height:28px;padding:0 10px;border-radius:9999px;background:var(--wash);border:1px solid transparent;color:var(--mist);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.sc-tab:hover{background:rgba(255,255,255,.09);color:var(--paper)}
+.sc-tab.active{background:var(--paper);color:var(--void);font-weight:510;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+/* global pause banner */
+.global-banner{display:none;margin-bottom:18px;padding:10px 14px;border-radius:8px;background:rgba(242,153,74,.12);border:1px solid rgba(242,153,74,.4);color:var(--paper);font-size:13px;align-items:center;gap:10px}
+.global-banner.show{display:flex}
+.global-banner svg{color:var(--orange);flex:none}
+
+/* top status info */
+.meta-status{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px;font-size:12px;color:var(--fog)}
+.meta-status .dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block}
+.meta-status .dot.paused{background:var(--orange)}
+
+/* products grid */
+.cards-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:28px}
+@media (min-width:1100px){.cards-grid{grid-template-columns:1fr 1fr}}
+@media (min-width:1600px){.cards-grid{grid-template-columns:repeat(3,1fr)}}
+
+.card{background:var(--carbon);border-radius:12px;box-shadow:inset 0 0 0 1px var(--graphite);padding:16px 18px;display:flex;flex-direction:column;gap:14px;position:relative;transition:box-shadow .15s}
+.card:hover{box-shadow:inset 0 0 0 1px var(--smoke)}
+.card.is-paused{border-left:3px solid var(--orange)}
+.card.has-error{border-left:3px solid var(--red)}
+.card.has-hold{border-left:3px solid var(--orange)}
+
+/* card header */
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.prod-meta{min-width:0}
+.prod-name{font-size:15px;font-weight:510;color:var(--paper);display:flex;align-items:center;gap:8px}
+.prod-repo{font:11px var(--mono);color:var(--ash);margin-top:2px}
+.card-actions{display:flex;align-items:center;gap:6px;flex:none}
+
+/* mode badge */
+.badge-mode{display:inline-flex;align-items:center;gap:4px;font:500 11px var(--mono);padding:2px 7px;border-radius:4px;text-transform:uppercase}
+.badge-mode.live{background:rgba(39,166,68,.12);color:var(--green);border:1px solid rgba(39,166,68,.3)}
+.badge-mode.shadow{background:var(--wash);color:var(--fog);border:1px solid var(--line)}
+
+/* verdict block */
+.verdict-box{border-radius:8px;padding:12px 14px;background:var(--obsidian);border:1px solid var(--graphite);display:flex;flex-direction:column;gap:8px}
+.verdict-row{display:flex;align-items:center;gap:10px}
+.verdict-pill{font:600 12px var(--mono);padding:3px 10px;border-radius:9999px;letter-spacing:.03em;display:inline-flex;align-items:center;gap:5px;text-transform:uppercase}
+.verdict-ship-all{background:rgba(39,166,68,.18);color:var(--green);border:1px solid rgba(39,166,68,.4)}
+.verdict-cherry-pick{background:rgba(242,153,74,.18);color:var(--orange);border:1px solid rgba(242,153,74,.4)}
+.verdict-solo-red{background:rgba(235,87,87,.18);color:var(--red);border:1px solid rgba(235,87,87,.4)}
+.verdict-wait{background:var(--wash);color:var(--fog);border:1px solid var(--line)}
+.verdict-paused{background:rgba(242,153,74,.15);color:var(--orange);border:1px solid rgba(242,153,74,.4)}
+.verdict-error{background:rgba(235,87,87,.15);color:var(--red);border:1px solid rgba(235,87,87,.4)}
+
+.reasons-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.reason-item{font-size:12px;color:var(--mist);display:flex;align-items:baseline;gap:6px;line-height:1.4}
+.reason-bullet{color:var(--ash);font-size:11px}
+
+/* in flight watch panel */
+.watch-box{background:rgba(39,166,68,.06);border:1px solid rgba(39,166,68,.3);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.watch-header{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.watch-title{color:var(--paper);font-weight:510;display:flex;align-items:center;gap:6px}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+.progress-track{height:6px;border-radius:3px;background:var(--graphite);overflow:hidden;position:relative}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--green));border-radius:3px;transition:width .3s}
+.watch-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:11px}
+@media (min-width:600px){.watch-stats{grid-template-columns:repeat(4,1fr)}}
+.w-stat{background:var(--wash2);border-radius:5px;padding:6px 8px;border:1px solid var(--line)}
+.w-label{color:var(--ash);margin-bottom:2px}
+.w-val{color:var(--paper);font-family:var(--mono)}
+
+/* hold box */
+.hold-box{background:rgba(242,153,74,.08);border:1px solid rgba(242,153,74,.35);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:12px}
+.hold-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hold-badge{font:600 11px var(--mono);color:var(--orange);display:inline-flex;align-items:center;gap:4px;text-transform:uppercase}
+.issue-link{font-family:var(--mono);color:var(--orange);text-decoration:underline;text-underline-offset:2px}
+.issue-link:hover{color:var(--paper)}
+.hold-time{font-family:var(--mono);color:var(--ash);font-size:11px}
+
+/* gh error box */
+.error-box{background:rgba(235,87,87,.08);border:1px solid rgba(235,87,87,.35);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.error-code{font:12px var(--mono);color:var(--red);word-break:break-word}
+
+/* PR lists */
+.pr-section{display:flex;flex-direction:column;gap:6px}
+.pr-section-title{font-size:11px;font-weight:510;text-transform:uppercase;letter-spacing:.04em;color:var(--fog);display:flex;align-items:center;gap:6px}
+.pr-section-title .count{font:400 11px var(--mono);color:var(--ash)}
+
+.pr-list{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
+.pr-item{background:var(--wash2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12px;display:flex;flex-direction:column;gap:3px;transition:background .15s}
+.pr-item:hover{background:var(--wash)}
+.pr-line1{display:flex;align-items:baseline;gap:8px}
+.risk-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.risk-dot.red{background:var(--red);box-shadow:0 0 5px rgba(235,87,87,.4)}
+.risk-dot.yellow{background:var(--orange);box-shadow:0 0 5px rgba(242,153,74,.4)}
+.risk-dot.green{background:var(--green);box-shadow:0 0 5px rgba(39,166,68,.4)}
+.pr-num{font:500 12px var(--mono);color:var(--fog);flex:none}
+.pr-title{color:var(--paper);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-reason{font-size:11px;color:var(--fog);margin-left:16px;line-height:1.35}
+.pr-reason.hold-why{color:var(--orange)}
+.empty-pr{font-size:12px;color:var(--ash);padding:6px 2px}
+
+/* card footer */
+.card-footer{margin-top:auto;padding-top:10px;border-top:.5px solid var(--graphite);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--ash);flex-wrap:wrap;gap:6px}
+.deploy-target{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono)}
+
+/* journal table */
+.journal-panel{background:var(--carbon);border-radius:12px;box-shadow:inset 0 0 0 1px var(--graphite);padding:16px 18px}
+.journal-panel h2{margin-bottom:12px}
+.journal-list{display:flex;flex-direction:column;gap:6px}
+.j-row{background:var(--wash2);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;align-items:flex-start;gap:12px;font-size:12px}
+@media (max-width:700px){.j-row{flex-direction:column;gap:6px}}
+.j-time{font:11px var(--mono);color:var(--ash);white-space:nowrap;padding-top:1px;min-width:145px}
+.j-prod{font:500 11px var(--mono);padding:2px 7px;border-radius:4px;background:var(--wash);color:var(--mist);white-space:nowrap;border:1px solid var(--line)}
+.j-action{font:600 11px var(--mono);padding:2px 7px;border-radius:4px;text-transform:uppercase;white-space:nowrap}
+.j-action.shipped{background:rgba(39,166,68,.12);color:var(--green);border:1px solid rgba(39,166,68,.3)}
+.j-action.watch{background:rgba(2,184,204,.12);color:var(--teal);border:1px solid rgba(2,184,204,.3)}
+.j-action.rolled-back{background:rgba(235,87,87,.15);color:var(--red);border:1px solid rgba(235,87,87,.35)}
+.j-action.held{background:rgba(242,153,74,.15);color:var(--orange);border:1px solid rgba(242,153,74,.35)}
+.j-action.started{background:var(--wash);color:var(--fog);border:1px solid var(--line)}
+.j-desc{color:var(--paper);flex:1;min-width:0;line-height:1.4}
+.j-extra{font-size:11px;color:var(--fog);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- sidebar navigation matching prototype/factory.html -->
+  <aside class="side" id="side" aria-label="Navigation">
+    <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x=".75" y=".75" width="16.5" height="16.5" rx="4" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M4.5 11.5h9M9 11.5V5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Factory
+    </div>
+    <div class="grp">Navigation</div>
+    <a class="nav" href="factory.html">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7L8 2.5 13.5 7v6.5h-11z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      Home
+    </a>
+    <a class="nav" href="#/release" aria-current="page">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l5 5-5 5M3 7h10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Releases
+      <span class="cnt" id="side-rel-cnt">5</span>
+    </a>
+    <a class="nav" href="factory.html#/agents">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c.8-2.6 2.7-3.8 5-3.8s4.2 1.2 5 3.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Agents
+    </a>
+    <a class="nav" href="factory.html#/log">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Decision log
+    </a>
+
+    <div class="grp">Products</div>
+    <div class="nav" style="cursor:default">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+      All 5 products
+    </div>
+
+    <div class="foot">
+      <div><b>Release Manager</b></div>
+      <div>Cron 07:30 Mon–Fri</div>
+      <div>Africa/Tunis (UTC+1)</div>
+    </div>
+  </aside>
+
+  <div style="min-width:0">
+    <header class="topbar">
+      <div class="topbar-in">
+        <h1>
+          <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l5 5-5 5M3 7h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Release Manager
+        </h1>
+        <span class="sub">Thursday 05 Nov 2026 · Africa/Tunis (UTC+1)</span>
+        <div class="right">
+          <button class="btn" type="button" id="btn-global-pause" onclick="toggleGlobalPause()">
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3h2v10H5zM9 3h2v10H9z" fill="currentColor"/></svg>
+            <span id="global-pause-text">Pause all releases</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- State switcher (scenarios) -->
+      <div class="scenario-panel">
+        <div class="scenario-label">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Prototype Scenarios:
+        </div>
+        <div class="scenarios" id="scenario-tabs"></div>
+      </div>
+
+      <!-- Global pause banner -->
+      <div class="global-banner" id="global-banner">
+        <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2a6 6 0 100 12A6 6 0 008 2zM5.5 5.5h1.8v5H5.5zm3.2 0h1.8v5H8.7z" fill="currentColor"/></svg>
+        <div>
+          <b>All automated releases are paused globally.</b>
+          Dry-run verdicts are evaluated below; release branches, merges, and deploy relays are suppressed.
+        </div>
+      </div>
+
+      <!-- Status metadata -->
+      <div class="meta-status" id="meta-status">
+        <span style="display:inline-flex;align-items:center;gap:6px"><i class="dot" id="live-dot"></i> <span id="run-time-text">Morning evaluation: 07:30 Africa/Tunis</span></span>
+        <span>·</span>
+        <span id="verdict-summary-text">5 products evaluated</span>
+        <span>·</span>
+        <span class="mono fog">Release window: Mon–Thu morning (hotfixes only on Fri)</span>
+      </div>
+
+      <!-- 5 Product cards -->
+      <div class="cards-grid" id="cards-grid"></div>
+
+      <!-- Release Journal (last 5 runs) -->
+      <div class="journal-panel">
+        <h2>
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10v10H3z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 7h4M6 10h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          Release Journal
+          <span class="fog" style="font-size:12px;font-weight:400;margin-left:auto">Last 5 automated runs across products</span>
+        </h2>
+        <div class="journal-list" id="journal-list"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* Release Manager Prototype Mock Data & State Management */
+const PRODUCTS = [
+  { id: "web", name: "Web", fullName: "Web monorepo", repo: "acme/web", deploy: "PlanetScale prod DR → ArgoCD sync" },
+  { id: "admin", name: "Admin", fullName: "Web admin dashboard", repo: "acme/admin", deploy: "Vercel on main" },
+  { id: "app", name: "App", fullName: "App video platform", repo: "acme/app", deploy: "Prisma migrate → Vercel deploy hook" },
+  { id: "store", name: "Store", fullName: "Store storefront", repo: "acme/store", deploy: "Supabase migration → Vercel (pandora-storefront)" },
+  { id: "factory", name: "Factory", fullName: "Factory automation", repo: "acme/factory", deploy: "~/factory-live checkout + watchdog restart" }
+];
+
+const SCENARIOS = {
+  default: {
+    key: "default",
+    name: "Normal mixed day (Default)",
+    badge: "Default",
+    globalPaused: false,
+    products: {
+      "web": {
+        mode: "live",
+        paused: false,
+        verdict: "solo-red",
+        reasons: [
+          "Red PR #1289 (PlanetScale migration) ships alone in today's morning window.",
+          "Red PR #1292 held: second red: only the oldest red ships solo.",
+          "Yellow PR #1285 held: no-release label.",
+          "Pacing check passed: Thursday morning run at 07:30 Africa/Tunis."
+        ],
+        shipPrs: [
+          { num: 1289, title: "Batch payout queue with idempotency keys for Flouci webhook", risk: "red", reasons: "adds migration: 20261104_payout_batches.sql; touches money path: payouts.py" }
+        ],
+        heldPrs: [
+          { num: 1292, title: "Instant wallet top-up via Sobflous payment gateway", risk: "red", reasons: "second red: only the oldest red ships solo" },
+          { num: 1285, title: "Creator payout threshold settings in mobile webview", risk: "yellow", reasons: "no-release label" }
+        ],
+        lastRelease: "Yesterday 08:15 (v2026.11.04.1)"
+      },
+      "admin": {
+        mode: "live",
+        paused: false,
+        verdict: "ship-all",
+        reasons: [
+          "2 PRs on develop ready to ship. 0 red PRs.",
+          "Review checklist complete (passed adversarial-pr-review loops).",
+          "Deploy target: Vercel on main (release v2.14.0 started today)."
+        ],
+        shipPrs: [
+          { num: 441, title: "KYC document preview zoom and rejection reason presets", risk: "green", reasons: "isolated admin UI change; 4 unit tests added" },
+          { num: 442, title: "Merchant financial audit log CSV export with date filter", risk: "yellow", reasons: "diff > 400 lines (+430, -18); no schema changes" }
+        ],
+        heldPrs: [],
+        lastRelease: "Yesterday 08:00 (v2.13.4)"
+      },
+      "app": {
+        mode: "live",
+        paused: false,
+        verdict: "cherry-pick",
+        reasons: [
+          "4 yellow PRs make the release red with no red PR.",
+          "Cherry-picking 3 oldest yellows (#893, #894, #895) plus all green PRs (#897).",
+          "Held #898: 4 yellows make the release red; held for tomorrow.",
+          "Pacing check passed: Thursday morning run at 07:30 Africa/Tunis."
+        ],
+        shipPrs: [
+          { num: 893, title: "Update video transcoding worker memory limits", risk: "yellow", reasons: "diff > 400 lines (+412, -15); no schema changes" },
+          { num: 894, title: "Webhook delivery retry backoff with jitter", risk: "yellow", reasons: "new env var: WEBHOOK_RETRY_MAX; no schema changes" },
+          { num: 895, title: "TikTok OAuth token refresh retry loop with exponential backoff", risk: "yellow", reasons: "new env var: TIKTOK_AUTH_RETRY_MAX; no schema changes" },
+          { num: 897, title: "Speed up video watermark overlay composition pipeline", risk: "green", reasons: "ffmpeg pipeline optimization; e2e video render tests pass" }
+        ],
+        heldPrs: [
+          { num: 898, title: "Creator payout tax statement PDF export generator", risk: "yellow", reasons: "4 yellows make the release red; held for tomorrow" }
+        ],
+        lastRelease: "Yesterday 08:30 (v1.18.2)"
+      },
+      "store": {
+        mode: "shadow",
+        paused: false,
+        verdict: "ship-all",
+        reasons: [
+          "Shadow mode: dry run only. Release plan logged, no relay dispatched to T3 thread.",
+          "2 PRs ready (2 green). Fast forward of develop to main safe."
+        ],
+        shipPrs: [
+          { num: 285, title: "Storefront product card inventory remaining badge", risk: "green", reasons: "front-end UI component; tests included" },
+          { num: 286, title: "Fix discount coupon code case sensitivity on checkout", risk: "green", reasons: "isolated checkout helper bugfix with test case" }
+        ],
+        heldPrs: [],
+        lastRelease: "Yesterday 09:10 (v1.9.0)"
+      },
+      "factory": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "Nothing to release: origin/main matches ~/factory-live (SHA 8f19c0b).",
+          "0 unreleased commits on main.",
+          "Daily run at 11:00 Africa/Tunis, after all other products finish their watch window (Factory deploys last)."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "Yesterday 11:00 (SHA 8f19c0b)"
+      }
+    },
+    journal: [
+      { time: "2026-11-05 08:35", prod: "web", action: "shipped", title: "Shipped solo-red release v2026.11.05.1 (PR #1289)", extra: "PlanetScale migration applied · ArgoCD synced · 60m watch window initiated" },
+      { time: "2026-11-05 07:35", prod: "admin", action: "started", title: "Started v2.14.0 release (PRs #441, #442) via Vercel on main", extra: "Vercel deployment initiated · 30m watch window scheduled" },
+      { time: "2026-11-04 11:00", prod: "factory", action: "shipped", title: "Deployed SHA 8f19c0b to ~/factory-live", extra: "factory doctor passed · watchdog restarted on port 3045 · 30m health checks clean" }
+    ]
+  },
+
+  "all-wait": {
+    key: "all-wait",
+    name: "(1) Everything wait",
+    badge: "1. All Wait",
+    globalPaused: false,
+    products: {
+      "web": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "develop matches main (SHA 9c01bf2). 0 unreleased PRs.",
+          "Last release v2026.11.04.1 healthy in production."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:15 (v2026.11.04.1)"
+      },
+      "admin": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "develop matches main (SHA 3a102bb). 0 unreleased PRs.",
+          "Vercel production deployment healthy."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:00 (v2.13.4)"
+      },
+      "app": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "1 PR on develop is held by 'no-release' label (#898).",
+          "0 shippable PRs remaining. develop will not ship until label is removed."
+        ],
+        shipPrs: [],
+        heldPrs: [
+          { num: 898, title: "WIP: Instagram reel auto-captions prototype", risk: "yellow", reasons: "no-release label" }
+        ],
+        lastRelease: "2026-11-03 08:30 (v1.18.2)"
+      },
+      "store": {
+        mode: "shadow",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "develop matches main. 0 unreleased PRs.",
+          "Shadow mode dry-run complete."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 09:10 (v1.9.0)"
+      },
+      "factory": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "origin/main matches ~/factory-live (SHA 8f19c0b). 0 unreleased commits.",
+          "Daily run at 11:00 Africa/Tunis; all cron jobs and watchdog scripts reporting clean."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 11:00 (SHA 8f19c0b)"
+      }
+    }
+  },
+
+  "solo-red-flight": {
+    key: "solo-red-flight",
+    name: "(2) Solo-red in flight",
+    badge: "2. In Flight",
+    globalPaused: false,
+    products: {
+      "store": {
+        mode: "live",
+        paused: false,
+        verdict: "solo-red",
+        inFlightWatch: {
+          pr: 282,
+          title: "Supabase migration: multi-currency price table & cart checkout",
+          elapsedMin: 35,
+          totalMin: 60,
+          checksPassing: 7,
+          checksTotal: 7,
+          errorRate: "0.28x baseline",
+          errorThreshold: "< 2.0x threshold",
+          deployTime: "08:10 Africa/Tunis",
+          businessSignal: "Cart checkouts: 19 in window (baseline 18)"
+        },
+        reasons: [
+          "Solo-red release in flight: PR #282 touches checkout & adds Supabase migration.",
+          "Watch window in progress (35 of 60 min elapsed). Health checks every 5 min.",
+          "All 7 checks passing so far. Error rate 0.28x of baseline (well under 2.0x limit)."
+        ],
+        shipPrs: [
+          { num: 282, title: "Supabase migration: multi-currency price table & cart checkout", risk: "red", reasons: "adds migration: 20261105_currencies.sql; touches money checkout path" }
+        ],
+        heldPrs: [
+          { num: 284, title: "Dynamic currency selector dropdown in navigation", risk: "yellow", reasons: "no-release label" }
+        ],
+        lastRelease: "Deployed 08:10 Africa/Tunis (watching)"
+      },
+      "web": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "develop matches main (SHA 9c01bf2). 0 unreleased PRs.",
+          "Morning run evaluated clean."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:15 (v2026.11.04.1)"
+      },
+      "admin": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "develop matches main. 0 unreleased PRs."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:00 (v2.13.4)"
+      },
+      "app": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "develop matches main. 0 unreleased PRs."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-03 08:30 (v1.18.2)"
+      },
+      "factory": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "Factory release waits until all other products finish their watch window.",
+          "Store watch window in flight (ends at 09:10 Africa/Tunis). Scheduled Factory run at 11:00."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 11:00 (SHA 8f19c0b)"
+      }
+    },
+    journal: [
+      { time: "2026-11-05 08:10", prod: "store", action: "watch", title: "Solo-red watch in progress: PR #282 Supabase migration", extra: "35/60 min elapsed · 7/7 health checks 200 OK · error rate 0.28x baseline" },
+      { time: "2026-11-04 11:00", prod: "factory", action: "shipped", title: "Deployed SHA 8f19c0b to ~/factory-live", extra: "factory doctor passed · watchdog restarted on port 3045 · 30m health checks clean" }
+    ]
+  },
+
+  "rollback-hold": {
+    key: "rollback-hold",
+    name: "(3) Rollback with hold",
+    badge: "3. Rollback & Hold",
+    globalPaused: false,
+    products: {
+      "app": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        hold: {
+          active: true,
+          issueNum: 412,
+          issueTitle: "Rollback: Prisma migration connection leak caused 500 spike",
+          since: "2026-11-04 17:15 Africa/Tunis",
+          elapsedHours: 16,
+          remainingHours: 8,
+          revertPr: 899,
+          revertStatus: "Revert PR #899 merged to develop. Earliest unhold 17:15 Africa/Tunis; needs `factory release unhold`."
+        },
+        reasons: [
+          "24-hour safety hold active following rollback of #892 yesterday at 17:15 Africa/Tunis.",
+          "Issue #412 filed with error logs. Revert PR #899 merged to develop.",
+          "8h remaining on minimum 24h hold window (earliest unhold 17:15 Africa/Tunis; needs `factory release unhold`)."
+        ],
+        shipPrs: [],
+        heldPrs: [
+          { num: 895, title: "TikTok OAuth token refresh retry loop with exponential backoff", risk: "yellow", reasons: "product on hold after rollback" },
+          { num: 897, title: "Speed up video watermark overlay composition pipeline", risk: "green", reasons: "product on hold after rollback" }
+        ],
+        lastRelease: "Rolled back 2026-11-04 17:15"
+      },
+      "web": {
+        mode: "live",
+        paused: false,
+        verdict: "ship-all",
+        reasons: [
+          "1 PR ready to ship (1 green).",
+          "No migrations or money paths touched."
+        ],
+        shipPrs: [
+          { num: 1295, title: "Fix creator avatar CDN cache busting query param", risk: "green", reasons: "front-end bugfix; zero risk score" }
+        ],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:15 (v2026.11.04.1)"
+      },
+      "admin": {
+        mode: "live",
+        paused: false,
+        verdict: "ship-all",
+        reasons: [
+          "1 PR ready to ship (1 green).",
+          "Fast Vercel deployment ready."
+        ],
+        shipPrs: [
+          { num: 445, title: "Add export button to merchant transaction list", risk: "green", reasons: "isolated admin UI enhancement; unit tests pass" }
+        ],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:00 (v2.13.4)"
+      },
+      "store": {
+        mode: "shadow",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "develop matches main. 0 unreleased PRs."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 09:10 (v1.9.0)"
+      },
+      "factory": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "origin/main matches ~/factory-live (SHA 8f19c0b). 0 unreleased commits.",
+          "Daily run at 11:00 Africa/Tunis."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 11:00 (SHA 8f19c0b)"
+      }
+    },
+    journal: [
+      { time: "2026-11-04 17:15", prod: "app", action: "rolled-back", title: "Rollback triggered: 3 consecutive 500 errors on health check", extra: "Instant rollback to dpl_9fa21 · Revert PR #899 merged to develop · 24h hold set · Issue #412" },
+      { time: "2026-11-04 11:00", prod: "factory", action: "shipped", title: "Deployed SHA 8f19c0b to ~/factory-live", extra: "factory doctor passed · watchdog restarted on port 3045 · 30m health checks clean" }
+    ]
+  },
+
+  "all-paused": {
+    key: "all-paused",
+    name: "(4) Everything paused",
+    badge: "4. All Paused",
+    globalPaused: true,
+    products: {
+      "web": {
+        mode: "live",
+        paused: true,
+        verdict: "solo-red",
+        reasons: [
+          "Product paused by operator: release relay and branch creation suppressed.",
+          "Dry-run evaluation: 1 red PR (#1289) would ship solo; 1 red PR (#1292) held."
+        ],
+        shipPrs: [
+          { num: 1289, title: "Batch payout queue with idempotency keys for Flouci webhook", risk: "red", reasons: "adds migration: 20261104_payout_batches.sql; touches money path: payouts.py" }
+        ],
+        heldPrs: [
+          { num: 1292, title: "Instant wallet top-up via Sobflous payment gateway", risk: "red", reasons: "product paused" }
+        ],
+        lastRelease: "2026-11-04 08:15 (v2026.11.04.1)"
+      },
+      "admin": {
+        mode: "live",
+        paused: true,
+        verdict: "ship-all",
+        reasons: [
+          "Product paused by operator: release relay suppressed.",
+          "Dry-run evaluation: 2 PRs (#441, #442) would ship."
+        ],
+        shipPrs: [
+          { num: 441, title: "KYC document preview zoom and rejection reason presets", risk: "green", reasons: "isolated admin UI change" },
+          { num: 442, title: "Merchant financial audit log CSV export with date filter", risk: "yellow", reasons: "diff > 400 lines (+430, -18)" }
+        ],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:00 (v2.13.4)"
+      },
+      "app": {
+        mode: "live",
+        paused: true,
+        verdict: "cherry-pick",
+        reasons: [
+          "Product paused by operator: release relay suppressed.",
+          "Dry-run evaluation: 4 yellows make release red; 4 PRs (#893, #894, #895, #897) would cherry-pick."
+        ],
+        shipPrs: [
+          { num: 893, title: "Update video transcoding worker memory limits", risk: "yellow", reasons: "diff > 400 lines (+412, -15)" },
+          { num: 894, title: "Webhook delivery retry backoff with jitter", risk: "yellow", reasons: "new env var: WEBHOOK_RETRY_MAX" },
+          { num: 895, title: "TikTok OAuth token refresh retry loop with exponential backoff", risk: "yellow", reasons: "new env var: TIKTOK_AUTH_RETRY_MAX" },
+          { num: 897, title: "Speed up video watermark overlay composition pipeline", risk: "green", reasons: "ffmpeg pipeline optimization" }
+        ],
+        heldPrs: [
+          { num: 898, title: "Creator payout tax statement PDF export generator", risk: "yellow", reasons: "product paused" }
+        ],
+        lastRelease: "2026-11-03 08:30 (v1.18.2)"
+      },
+      "store": {
+        mode: "shadow",
+        paused: true,
+        verdict: "ship-all",
+        reasons: [
+          "Product paused by operator: release relay suppressed.",
+          "Dry-run evaluation: 2 PRs (#285, #286) would ship."
+        ],
+        shipPrs: [
+          { num: 285, title: "Storefront product card inventory remaining badge", risk: "green", reasons: "front-end UI component" },
+          { num: 286, title: "Fix discount coupon code case sensitivity on checkout", risk: "green", reasons: "checkout helper bugfix" }
+        ],
+        heldPrs: [],
+        lastRelease: "2026-11-04 09:10 (v1.9.0)"
+      },
+      "factory": {
+        mode: "live",
+        paused: true,
+        verdict: "wait",
+        reasons: [
+          "Product paused by operator: deploy commands suppressed.",
+          "Dry-run evaluation: origin/main matches ~/factory-live (SHA 8f19c0b). Daily run at 11:00."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 11:00 (SHA 8f19c0b)"
+      }
+    }
+  },
+
+  "gh-error": {
+    key: "gh-error",
+    name: "(5) gh read error",
+    badge: "5. gh Error",
+    globalPaused: false,
+    products: {
+      "web": {
+        mode: "live",
+        paused: false,
+        verdict: "error",
+        error: "could not read: GitHub API 502 Bad Gateway (graphql: timeout waiting for response from api.github.com/graphql after 15000ms)",
+        reasons: [
+          "could not read: GitHub API 502 Bad Gateway (graphql: timeout waiting for response from api.github.com/graphql after 15000ms)",
+          "Cannot inspect develop branch PRs. Release relay suppressed for this product.",
+          "Automatic retry scheduled in 15 minutes by factory cron."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "2026-11-04 08:15 (v2026.11.04.1)"
+      },
+      "admin": {
+        mode: "live",
+        paused: false,
+        verdict: "ship-all",
+        reasons: [
+          "2 PRs on develop ready to ship. 0 red PRs.",
+          "Review checklist complete. Fast Vercel rollback available."
+        ],
+        shipPrs: [
+          { num: 441, title: "KYC document preview zoom and rejection reason presets", risk: "green", reasons: "isolated admin UI change; 4 unit tests added" },
+          { num: 442, title: "Merchant financial audit log CSV export with date filter", risk: "yellow", reasons: "diff > 400 lines (+430, -18); no schema changes" }
+        ],
+        heldPrs: [],
+        lastRelease: "Yesterday 08:00 (v2.13.4)"
+      },
+      "app": {
+        mode: "live",
+        paused: false,
+        verdict: "cherry-pick",
+        reasons: [
+          "4 yellow PRs make the release red with no red PR.",
+          "Cherry-picking 3 oldest yellows (#893, #894, #895) plus all green PRs (#897).",
+          "Held #898: 4 yellows make the release red; held for tomorrow."
+        ],
+        shipPrs: [
+          { num: 893, title: "Update video transcoding worker memory limits", risk: "yellow", reasons: "diff > 400 lines (+412, -15); no schema changes" },
+          { num: 894, title: "Webhook delivery retry backoff with jitter", risk: "yellow", reasons: "new env var: WEBHOOK_RETRY_MAX" },
+          { num: 895, title: "TikTok OAuth token refresh retry loop with exponential backoff", risk: "yellow", reasons: "new env var: TIKTOK_AUTH_RETRY_MAX" },
+          { num: 897, title: "Speed up video watermark overlay composition pipeline", risk: "green", reasons: "ffmpeg pipeline optimization; e2e tests pass" }
+        ],
+        heldPrs: [
+          { num: 898, title: "Creator payout tax statement PDF export generator", risk: "yellow", reasons: "4 yellows make the release red; held for tomorrow" }
+        ],
+        lastRelease: "Yesterday 08:30 (v1.18.2)"
+      },
+      "store": {
+        mode: "shadow",
+        paused: false,
+        verdict: "ship-all",
+        reasons: [
+          "Shadow mode: dry run only. Release plan logged.",
+          "2 PRs ready (2 green). Review checklist complete."
+        ],
+        shipPrs: [
+          { num: 285, title: "Storefront product card inventory remaining badge", risk: "green", reasons: "front-end UI component; tests included" },
+          { num: 286, title: "Fix discount coupon code case sensitivity on checkout", risk: "green", reasons: "isolated checkout helper bugfix with test case" }
+        ],
+        heldPrs: [],
+        lastRelease: "2026-11-04 09:10 (v1.9.0)"
+      },
+      "factory": {
+        mode: "live",
+        paused: false,
+        verdict: "wait",
+        reasons: [
+          "Nothing to release: origin/main matches ~/factory-live (SHA 8f19c0b).",
+          "0 unreleased commits on main.",
+          "Daily run at 11:00 Africa/Tunis, after all other products finish their watch window (Factory deploys last)."
+        ],
+        shipPrs: [],
+        heldPrs: [],
+        lastRelease: "Yesterday 11:00 (SHA 8f19c0b)"
+      }
+    }
+  }
+};
+
+const JOURNAL = SCENARIOS.default.journal;
+
+/* Current Active State */
+let activeScenarioKey = "default";
+let currentProductStates = {};
+let isGlobalPaused = false;
+let currentJournal = [];
+
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function initScenario(key) {
+  activeScenarioKey = key;
+  const sc = SCENARIOS[key] || SCENARIOS.default;
+  currentProductStates = deepClone(sc.products);
+  isGlobalPaused = sc.globalPaused || false;
+  currentJournal = sc.journal ? deepClone(sc.journal) : deepClone(SCENARIOS.default.journal);
+  renderAll();
+}
+
+function toggleGlobalPause() {
+  isGlobalPaused = !isGlobalPaused;
+  PRODUCTS.forEach(p => {
+    if (currentProductStates[p.id]) {
+      currentProductStates[p.id].paused = isGlobalPaused;
+    }
+  });
+  renderAll();
+}
+
+function toggleProductPause(prodId) {
+  if (!currentProductStates[prodId]) return;
+  currentProductStates[prodId].paused = !currentProductStates[prodId].paused;
+  
+  // Update global state if all are paused
+  const allPaused = PRODUCTS.every(p => currentProductStates[p.id]?.paused);
+  if (allPaused) isGlobalPaused = true;
+  else if (!currentProductStates[prodId].paused && isGlobalPaused) {
+    isGlobalPaused = false;
+  }
+  renderAll();
+}
+
+function esc(s) {
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+
+/* Render Functions */
+function renderScenarioTabs() {
+  const container = document.getElementById("scenario-tabs");
+  if (!container.children.length) {
+    container.innerHTML = Object.keys(SCENARIOS).map(k => {
+      const sc = SCENARIOS[k];
+      return `<button class="sc-tab" type="button" data-sc="${k}" onclick="initScenario('${k}')">
+        ${esc(sc.name)}
+      </button>`;
+    }).join("");
+  }
+  container.querySelectorAll(".sc-tab").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.sc === activeScenarioKey);
+  });
+}
+
+function renderGlobalState() {
+  const banner = document.getElementById("global-banner");
+  const btn = document.getElementById("btn-global-pause");
+  const btnText = document.getElementById("global-pause-text");
+  const liveDot = document.getElementById("live-dot");
+
+  if (isGlobalPaused) {
+    banner.classList.add("show");
+    btn.className = "btn danger";
+    btnText.textContent = "Resume all releases";
+    liveDot.className = "dot paused";
+  } else {
+    banner.classList.remove("show");
+    btn.className = "btn";
+    btnText.textContent = "Pause all releases";
+    liveDot.className = "dot";
+  }
+
+  // Summary counts
+  let shipCount = 0, waitCount = 0, heldPrCount = 0;
+  PRODUCTS.forEach(p => {
+    const st = currentProductStates[p.id];
+    if (st) {
+      if (st.paused) { /* count as paused */ }
+      else if (st.verdict === "wait") waitCount++;
+      else if (st.verdict === "ship-all" || st.verdict === "cherry-pick" || st.verdict === "solo-red") shipCount++;
+      heldPrCount += (st.heldPrs || []).length;
+    }
+  });
+
+  const summary = document.getElementById("verdict-summary-text");
+  if (isGlobalPaused) {
+    summary.textContent = "All 5 products paused by operator";
+  } else {
+    summary.textContent = `5 products evaluated: ${shipCount} release${shipCount === 1 ? '' : 's'} planned, ${waitCount} wait, ${heldPrCount} PR${heldPrCount === 1 ? '' : 's'} held`;
+  }
+}
+
+function renderCards() {
+  const container = document.getElementById("cards-grid");
+  container.innerHTML = PRODUCTS.map(p => {
+    const st = currentProductStates[p.id] || {
+      mode: "live",
+      paused: false,
+      verdict: "wait",
+      reasons: ["No verdict recorded."],
+      shipPrs: [],
+      heldPrs: []
+    };
+
+    const isPaused = st.paused;
+    const hasError = st.verdict === "error" || Boolean(st.error);
+    const hasHold = Boolean(st.hold && st.hold.active);
+    const inWatch = Boolean(st.inFlightWatch);
+
+    // Classes for card
+    const cardClasses = ["card"];
+    if (isPaused) cardClasses.push("is-paused");
+    if (hasError) cardClasses.push("has-error");
+    if (hasHold) cardClasses.push("has-hold");
+
+    // Verdict display
+    let verdictClass = "verdict-wait";
+    let verdictLabel = "WAIT";
+    let verdictTitle = "Wait";
+
+    if (isPaused) {
+      verdictClass = "verdict-paused";
+      verdictLabel = "PAUSED";
+      verdictTitle = "Releases Paused";
+    } else if (hasError) {
+      verdictClass = "verdict-error";
+      verdictLabel = "READ ERROR";
+      verdictTitle = "Could not read PRs";
+    } else if (st.verdict === "ship-all") {
+      verdictClass = "verdict-ship-all";
+      verdictLabel = "SHIP-ALL";
+      verdictTitle = "Release All PRs";
+    } else if (st.verdict === "cherry-pick") {
+      verdictClass = "verdict-cherry-pick";
+      verdictLabel = "CHERRY-PICK";
+      verdictTitle = "Cherry-pick Green & Yellow";
+    } else if (st.verdict === "solo-red") {
+      verdictClass = "verdict-solo-red";
+      verdictLabel = "SOLO-RED";
+      verdictTitle = "Single Red PR Only";
+    } else {
+      verdictClass = "verdict-wait";
+      verdictLabel = "WAIT";
+      verdictTitle = "Wait (No Release)";
+    }
+
+    // Reasons list
+    let reasonsHtml = "";
+    if (isPaused) {
+      reasonsHtml = `<li class="reason-item"><span class="reason-bullet">•</span><span>Product releases paused by operator. Dry-run verdict computed; release relays suppressed.</span></li>`;
+      (st.reasons || []).forEach(r => {
+        reasonsHtml += `<li class="reason-item"><span class="reason-bullet">•</span><span class="fog">Dry-run: ${esc(r)}</span></li>`;
+      });
+    } else {
+      reasonsHtml = (st.reasons || []).map(r => {
+        return `<li class="reason-item"><span class="reason-bullet">•</span><span>${esc(r)}</span></li>`;
+      }).join("");
+    }
+
+    // In flight watch box
+    let watchHtml = "";
+    if (inWatch && !isPaused) {
+      const w = st.inFlightWatch;
+      const pct = Math.min(100, Math.round((w.elapsedMin / w.totalMin) * 100));
+      watchHtml = `
+        <div class="watch-box">
+          <div class="watch-header">
+            <span class="watch-title">
+              <i class="pulse-dot"></i>
+              Watch window in progress · ${w.elapsedMin} / ${w.totalMin} min (${pct}%)
+            </span>
+            <span class="mono fog" style="font-size:11px">check every 5m</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="watch-stats">
+            <div class="w-stat">
+              <div class="w-label">Health Endpoints</div>
+              <div class="w-val" style="color:var(--green)">${w.checksPassing}/${w.checksTotal} 200 OK</div>
+            </div>
+            <div class="w-stat">
+              <div class="w-label">Error Rate</div>
+              <div class="w-val" style="color:var(--green)">${w.errorRate}</div>
+            </div>
+            <div class="w-stat">
+              <div class="w-label">Threshold</div>
+              <div class="w-val">${w.errorThreshold}</div>
+            </div>
+            <div class="w-stat">
+              <div class="w-label">Business Signal</div>
+              <div class="w-val" style="color:var(--mist)">${w.businessSignal}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Hold box
+    let holdHtml = "";
+    if (hasHold && !isPaused) {
+      const h = st.hold;
+      holdHtml = `
+        <div class="hold-box">
+          <div class="hold-header">
+            <span class="hold-badge">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a6 6 0 100 12A6 6 0 008 2zm-.8 3h1.6v4H7.2zm0 5.5h1.6v1.6H7.2z"/></svg>
+              24-Hour Rollback Hold
+            </span>
+            <span class="hold-time">${esc(h.remainingHours)}h remaining on hold</span>
+          </div>
+          <div>
+            <b>Rollback issue:</b> <a class="issue-link" href="#" onclick="alert('Opens GitHub Issue #${h.issueNum}');return false">#${h.issueNum}</a> — ${esc(h.issueTitle)}
+          </div>
+          <div class="fog" style="font-size:11px">
+            Held since: <span class="mono">${esc(h.since)}</span> (${h.elapsedHours}h ago)
+          </div>
+          <div style="color:var(--mist);font-size:11px">
+            ${esc(h.revertStatus)}
+          </div>
+        </div>
+      `;
+    }
+
+    // Error box
+    let errorHtml = "";
+    if (hasError && !isPaused) {
+      errorHtml = `
+        <div class="error-box">
+          <div style="font-weight:510;color:var(--red);display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.8 3.5h1.6V9H7.2zm0 6.5h1.6v1.6H7.2z"/></svg>
+            GitHub Read Error
+          </div>
+          <div class="error-code">${esc(st.error)}</div>
+        </div>
+      `;
+    }
+
+    // Shippable PRs
+    const shipPrs = st.shipPrs || [];
+    let shipListHtml = "";
+    if (shipPrs.length > 0) {
+      shipListHtml = shipPrs.map(pr => {
+        return `
+          <li class="pr-item">
+            <div class="pr-line1">
+              <span class="risk-dot ${pr.risk}" title="Risk score: ${pr.risk}"></span>
+              <span class="pr-num">#${pr.num}</span>
+              <span class="pr-title" title="${esc(pr.title)}">${esc(pr.title)}</span>
+            </div>
+            <div class="pr-reason">${esc(pr.reasons)}</div>
+          </li>
+        `;
+      }).join("");
+    } else {
+      shipListHtml = `<div class="empty-pr">No PRs scheduled to ship today.</div>`;
+    }
+
+    // Held PRs
+    const heldPrs = st.heldPrs || [];
+    let heldListHtml = "";
+    if (heldPrs.length > 0) {
+      heldListHtml = heldPrs.map(pr => {
+        return `
+          <li class="pr-item">
+            <div class="pr-line1">
+              <span class="risk-dot ${pr.risk}" title="Risk score: ${pr.risk}"></span>
+              <span class="pr-num">#${pr.num}</span>
+              <span class="pr-title" title="${esc(pr.title)}">${esc(pr.title)}</span>
+            </div>
+            <div class="pr-reason hold-why">⚠️ ${esc(pr.reasons)}</div>
+          </li>
+        `;
+      }).join("");
+    } else {
+      heldListHtml = `<div class="empty-pr">None. 0 PRs held back.</div>`;
+    }
+
+    const pauseBtnClass = isPaused ? "btn btn-sm danger" : "btn btn-sm";
+    const pauseBtnText = isPaused ? "Resume" : "Pause";
+
+    return `
+      <div class="${cardClasses.join(' ')}" id="card-${p.id}">
+        <div class="card-header">
+          <div class="prod-meta">
+            <div class="prod-name">
+              ${esc(p.name)}
+              <span class="badge-mode ${st.mode}">${st.mode}</span>
+            </div>
+            <div class="prod-repo">${esc(p.repo)}</div>
+          </div>
+          <div class="card-actions">
+            <button class="${pauseBtnClass}" type="button" onclick="toggleProductPause('${p.id}')">
+              ${pauseBtnText}
+            </button>
+          </div>
+        </div>
+
+        <div class="verdict-box">
+          <div class="verdict-row">
+            <span class="verdict-pill ${verdictClass}">${verdictLabel}</span>
+            <span style="font-weight:510;font-size:13px;color:var(--paper)">${verdictTitle}</span>
+          </div>
+          <ul class="reasons-list">
+            ${reasonsHtml}
+          </ul>
+        </div>
+
+        ${watchHtml}
+        ${holdHtml}
+        ${errorHtml}
+
+        <div class="pr-section">
+          <div class="pr-section-title">
+            <span>Shippable in this release</span>
+            <span class="count">(${shipPrs.length})</span>
+          </div>
+          <ul class="pr-list">
+            ${shipListHtml}
+          </ul>
+        </div>
+
+        <div class="pr-section">
+          <div class="pr-section-title">
+            <span>Held PRs</span>
+            <span class="count">(${heldPrs.length})</span>
+          </div>
+          <ul class="pr-list">
+            ${heldListHtml}
+          </ul>
+        </div>
+
+        <div class="card-footer">
+          <span class="deploy-target" title="Target deploy path">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2l5 5-5 5M3 7h10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            ${esc(p.deploy)}
+          </span>
+          <span class="fog">${esc(st.lastRelease || "—")}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderJournal() {
+  const container = document.getElementById("journal-list");
+  container.innerHTML = currentJournal.map(j => {
+    return `
+      <div class="j-row">
+        <div class="j-time">${esc(j.time)} UTC+1</div>
+        <div class="j-prod">${esc(j.prod)}</div>
+        <div class="j-action ${j.action}">${esc(j.action)}</div>
+        <div class="j-desc">
+          <div>${esc(j.title)}</div>
+          <div class="j-extra">${esc(j.extra)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderAll() {
+  renderScenarioTabs();
+  renderGlobalState();
+  renderCards();
+  renderJournal();
+}
+
+// Initial bootstrap
+initScenario("default");
+</script>
+</body>
+</html>

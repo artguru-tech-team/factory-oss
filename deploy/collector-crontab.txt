@@ -1,0 +1,2 @@
+# factory machine collector: pushes local agent telemetry to the VPS every minute
+* * * * * factory collect push --url https://<host> --machine <id> >> ~/.factory/collect.log 2>&1 # factory-collect
