@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "factory",
+  "description": "Skills that agents need to work with the factory dashboard.",
+  "owner": { "name": "factory maintainers" },
+  "plugins": [
+    {
+      "name": "factory",
+      "description": "The factory CLI workflow (factory) and the daily release manager (release-manager).",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

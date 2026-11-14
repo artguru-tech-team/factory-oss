@@ -391,6 +391,95 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(res["action"], "hold")
         self.assertIn("hold", res["flags"])
 
+    def test_release_api(self):
+        k = "?k=" + self.key
+        self.assertEqual(self.req("/api/release")[0], 403)
+        self.assertEqual(self.req("/api/release", {"action": "pause", "product": "*"})[0], 403)
+
+        # no products: an empty, valid answer
+        code, out = self.req("/api/release" + k)
+        self.assertEqual((code, json.loads(out)), (200, {"paused": False, "products": {}, "journal": []}))
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            for name in ("web", "app"):
+                cli.main(["release", "product", "add", name, "--repo", "o/" + name, "--flow", "pr", "--project", name])
+        now = datetime.now(timezone.utc)
+        iso = lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        today = now.astimezone(release.TUNIS).strftime("%Y-%m-%d")
+        rel = release.release()
+        rel["verdicts"][today] = {
+            "web": {"verdict": "ship-all", "ship": [7], "held": [], "reasons": ["1 PR, all green"], "at": iso(now)},
+            "app": {"verdict": "wait", "ship": [], "held": [], "reasons": ["could not read: GitHub API 502"], "at": iso(now)},
+        }
+        rel["holds"]["web"] = {"since": iso(now - timedelta(hours=6)), "issue": "bad deploy"}
+        release.save_release(rel)
+
+        body = json.loads(self.req("/api/release" + k)[1])
+        web, app = body["products"]["web"], body["products"]["app"]
+        self.assertEqual((web["verdict"]["verdict"], web["verdict"]["ship"], web["mode"], web["paused"]), ("ship-all", [7], "shadow", False))
+        self.assertTrue(17.5 < web["hold"]["remaining_hours"] <= 18)
+        self.assertIsNone(web["error"])
+        self.assertEqual(app["error"], "could not read: GitHub API 502")
+        self.assertIsNone(app["hold"])
+
+        # input validation: 400
+        for bad in ("not a dict", {"product": "web"}, {"action": "fly", "product": "web"}, {"action": "pause"},
+                    {"action": "pause", "product": 3}, {"action": "pause", "product": "nope"}, {"action": "unhold", "product": "*"}):
+            self.assertEqual(self.req("/api/release" + k, bad)[0], 400, bad)
+
+        # pause / resume one product, then all; the answer is the fresh state
+        code, out = self.req("/api/release" + k, {"action": "pause", "product": "web"})
+        self.assertEqual((code, json.loads(out)["products"]["web"]["paused"]), (200, True))
+        self.assertEqual(release.release()["paused"], {"web": True})
+        code, out = self.req("/api/release" + k, {"action": "pause", "product": "*"})
+        self.assertTrue(json.loads(out)["paused"])
+        code, out = self.req("/api/release" + k, {"action": "resume", "product": "*"})
+        self.assertFalse(json.loads(out)["paused"])
+        self.assertTrue(json.loads(out)["products"]["web"]["paused"], "Resume all keeps a product's own pause")
+        self.req("/api/release" + k, {"action": "resume", "product": "web"})
+        self.assertEqual(release.release()["paused"], {})
+
+        # unhold: refused under 24h with the CLI's reason, accepted after
+        code, out = self.req("/api/release" + k, {"action": "unhold", "product": "web"})
+        self.assertEqual(code, 400)
+        self.assertIn("under 24h old", json.loads(out)["error"])
+        rel = release.release()
+        rel["holds"]["web"]["since"] = iso(now - timedelta(hours=25))
+        release.save_release(rel)
+        code, out = self.req("/api/release" + k, {"action": "unhold", "product": "web"})
+        self.assertEqual((code, json.loads(out)["products"]["web"]["hold"]), (200, None))
+        self.assertEqual(release.release()["holds"], {})
+
+        # a hold with a non-string since, and an almost-expired hold (round up, never enable Unhold early)
+        rel = release.release()
+        rel["holds"]["web"] = {"since": iso(now - timedelta(hours=23, minutes=58)), "issue": "x"}
+        release.save_release(rel)
+        code, out = self.req("/api/release" + k)
+        self.assertEqual(code, 200)
+        self.assertGreater(json.loads(out)["products"]["web"]["hold"]["remaining_hours"], 0)
+        rel["holds"]["web"]["since"] = 12345
+        release.save_release(rel)
+        self.assertEqual(self.req("/api/release" + k)[0], 200)
+        self.assertIn("journal", json.loads(self.req("/api/release" + k)[1]))
+
+        # in flight and last event come from release events only: queue noise never hides "shipped" or "rollback-failed"
+        rel = release.release()
+        rel["holds"] = {}
+        ev = lambda e, h: {"at": iso(now - timedelta(hours=h)), "product": "web", "event": e}
+        rel["journal"] = [ev("started", 9), ev("shipped", 8)] + [ev("queue-merged", 7 - i * 0.1) for i in range(6)]
+        release.save_release(rel)
+        web = json.loads(self.req("/api/release" + k)[1])["products"]["web"]
+        self.assertIsNone(web["inFlightSince"])
+        self.assertEqual([e["event"] for e in web["journal"]], ["started", "shipped"])
+        rel["journal"] += [ev("started", 3), ev("rollback-failed", 2)] + [ev("queue-closed", 1)] * 3
+        release.save_release(rel)
+        out = json.loads(self.req("/api/release" + k)[1])
+        self.assertEqual(out["products"]["web"]["lastEvent"], "rollback-failed")
+        self.assertFalse(any(e["event"].startswith("queue-") for e in out["journal"]))
+        rel["journal"] += [ev("started", 0.5), ev("held", 0.4)]
+        release.save_release(rel)
+        self.assertIsNotNone(json.loads(self.req("/api/release" + k)[1])["products"]["web"]["inFlightSince"], "held after started is still in flight")
+
     def test_comms_api(self):
         k = "?k=" + self.key
         with store.lock():

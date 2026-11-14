@@ -113,6 +113,28 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual(prod["red_paths"], ["apps/payments/**", "infra/**"])
 
     @mock.patch.object(sources, "gh_json")
+    def test_unreleased_reads_past_250_commits(self, mock_gh):
+        shas = [f"c{i}" for i in range(260)]
+
+        def fake_gh(cmd, path):
+            if path == "repos/acme/app/commits/develop":
+                return {"sha": "tip"}
+            if path == "repos/acme/app/compare/main...tip":
+                return {"commits": [{"sha": s, "parents": [1]} for s in shas[:250]], "total_commits": 260}
+            if path.startswith("repos/acme/app/compare/main...tip?per_page=100&page="):
+                page = int(path.rsplit("=", 1)[1])
+                return {"commits": [{"sha": s, "parents": [1]} for s in shas[(page - 1) * 100:page * 100]],
+                        "total_commits": 260}
+            if path.endswith("/pulls"):
+                return []
+            raise AssertionError(path)
+
+        mock_gh.side_effect = fake_gh
+        prs, base_sha, unmapped = release.unreleased_prs({"repo": "acme/app", "base": "develop", "head": "main"})
+        self.assertEqual(base_sha, "tip")
+        self.assertEqual(len(unmapped), 260)
+
+    @mock.patch.object(sources, "gh_json")
     def test_unreleased_from_compare(self, mock_gh):
         product = {
             "repo": "acme/app",
@@ -297,15 +319,17 @@ class ReleaseTest(unittest.TestCase):
             "base": "develop",
             "head": "main",
         }
+        # the paged re-read comes back short (GitHub changed under us): still refuse a partial list
         mock_gh.side_effect = lambda cmd, path: (
-            {"sha": "c_tip"} if "commits/develop" in path else {
+            {"sha": "c_tip"} if "commits/develop" in path else
+            {"total_commits": 300, "commits": []} if "per_page=" in path else {
                 "total_commits": 300,
                 "commits": [{"sha": f"c{i}"} for i in range(250)],
             }
         )
         with self.assertRaises(FactoryError) as ctx:
             release.unreleased_prs(product)
-        self.assertIn("compare truncated: 250 of 300 commits", str(ctx.exception))
+        self.assertIn("compare truncated: 0 of 300 commits", str(ctx.exception))
 
     @mock.patch.object(sources, "gh_json")
     def test_unreleased_prs_reads_develop_tip_and_returns_plain_tuple(self, mock_gh):
@@ -1276,6 +1300,20 @@ class ReleaseDecideTest(unittest.TestCase):
             {"number": 11, "reason": "over the 10-PR cap"},
             {"number": 12, "reason": "over the 10-PR cap"},
         ])
+
+    def test_front_override_beats_cap_and_ships_solo(self):
+        prs = [make_pr(i, f"2026-11-01T{i:02d}:00:00Z", color="red", score_reasons=["migration"]) for i in range(1, 13)]
+        state = {"products": {"c2e": {"repo": "acme/App"}},
+                 "queue_actions": {"acme/app#12": {"front": "2026-11-02T00:00:00Z"}}}
+        res = release.decide(prs, state, "c2e", True, self.mon)
+        self.assertEqual(res["verdict"], "solo-red")
+        self.assertEqual(res["ship"], [12])
+
+    def test_front_override_ships_in_merge_order(self):
+        prs = [make_pr(i, f"2026-11-01T{i:02d}:00:00Z", color="green") for i in range(1, 13)]
+        state = {"products": {"c2e": {"repo": "acme/app"}}, "queue_actions": {"acme/app#12": {"front": "x"}}}
+        res = release.decide(prs, state, "c2e", True, self.mon)
+        self.assertEqual(res["ship"], list(range(1, 10)) + [12])
 
     def test_friday_only_green_fixes(self):
         pr1 = make_pr(1, "2026-11-05T01:00:00Z", color="green", labels=["bug"])
@@ -3151,3 +3189,43 @@ class ReleaseCheckTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SendQueueRelayTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["FACTORY_HOME"] = self.tmp.name
+        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(os.environ.pop, "FACTORY_HOME", None)
+        code, _, err = run("release", "product", "add", "app", "--repo", "acme/app", "--flow", "release-branch", "--project", "proj")
+        self.assertEqual(code, 0, err)
+        st = release.release()
+        st["products"]["app"].update(mode="live", thread="t-app")
+        st["verdicts"] = {"2026-11-10": {"app": {"verdict": "wait"}}}
+        release.save_release(st)
+        self.q = {"agents": [{"job": "develop-fix"}], "merge": [], "pending_actions": [], "asks": []}
+
+    def test_sends_once_then_reports_claimed(self):
+        with mock.patch.object(release.relay, "enqueue_message") as send:
+            self.assertTrue(release.send_queue_relay("app", self.q, "2026-11-10"))
+            self.assertFalse(release.send_queue_relay("app", self.q, "2026-11-10"))
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(release.release()["verdicts"]["2026-11-10"]["app"]["queue_relayed"], "2026-11-10")
+
+    def test_failed_send_releases_the_claim(self):
+        with mock.patch.object(release.relay, "enqueue_message", side_effect=RuntimeError("down")):
+            with self.assertRaises(release.QueueRelayError):
+                release.send_queue_relay("app", self.q, "2026-11-10")
+        v = release.release()["verdicts"]["2026-11-10"]["app"]
+        self.assertFalse(v["queue_relayed"])
+        self.assertEqual(v["queueRelayError"], "down")
+        with mock.patch.object(release.relay, "enqueue_message"):  # the retry succeeds and clears the error
+            self.assertTrue(release.send_queue_relay("app", self.q, "2026-11-10"))
+        self.assertNotIn("queueRelayError", release.release()["verdicts"]["2026-11-10"]["app"])
+
+    def test_bookkeeping_error_after_a_send_keeps_the_claim(self):
+        with mock.patch.object(release.relay, "enqueue_message"), \
+                mock.patch.object(release, "_book_queue_relay", side_effect=RuntimeError("disk")), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertTrue(release.send_queue_relay("app", self.q, "2026-11-10"))
+        self.assertEqual(release.release()["verdicts"]["2026-11-10"]["app"]["queue_relayed"], "2026-11-10")

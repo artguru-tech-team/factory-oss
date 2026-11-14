@@ -12,6 +12,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import sys
@@ -20,7 +21,7 @@ from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import access_jwt, assign, autopilot, board, comms, config, office, queue, relay, release, roadmap, store, t3
+from . import access_jwt, assign, autopilot, board, comms, config, fixlane, office, pm, queue, relay, release, roadmap, store, t3
 
 MAX_BODY = 64 * 1024
 MAX_NOTE = 4000
@@ -448,6 +449,7 @@ def save_board(patch):
     if action == "refresh":
         data = board.collect(store.products())
         data["auto_promote"] = board.auto_promote()
+        data["max_per_day"] = fixlane.max_per_day()
         return 200, data
     repo, number, text = patch.get("repo"), patch.get("number"), patch.get("text")
     try:
@@ -527,7 +529,7 @@ def board_data():
     cached = store.read("board-cache.json", {"cards": [], "fetchedAt": None})
     return {"cards": cached.get("cards", []), "fetchedAt": cached.get("fetchedAt"),
             "error": cached.get("error"), "repoErrors": cached.get("repoErrors", {}),
-            "auto_promote": board.auto_promote()}
+            "auto_promote": board.auto_promote(), "max_per_day": fixlane.max_per_day()}
 
 
 def board_timeline(query):
@@ -571,6 +573,64 @@ def queue_data():
     snap["product_configs"] = prods_cfg
 
     return snap
+
+
+def release_data():
+    """GET /api/release: per-product release state (today's verdict, hold, pause, mode, last journal events)."""
+    rel = release.release()
+    now = release._now_utc(None)
+    status, _ = release.status(now=now)
+    own_paused = rel.get("paused", {})
+    # release events only: develop-queue events share the journal and would push "shipped" out of any window
+    rel_journal = [e for e in rel.get("journal", []) if isinstance(e, dict) and not str(e.get("event", "")).startswith("queue-")]
+    products = {}
+    for name, st in status["products"].items():
+        p = rel.get("products", {}).get(name, {})
+        events = [e for e in rel_journal if e.get("product") == name]
+        last = events[-1] if events else None
+        # "held" is written between started and shipped, so judge in flight on start/finish events only
+        run = next((e for e in reversed(events) if e.get("event") in ("started", "shipped", "rolled-back", "rollback-failed")), None)
+        v = st.get("verdict") or None
+        reasons = (v or {}).get("reasons") or []
+        err = next((str(r) for r in reasons if str(r).startswith("could not read")), None)
+        hold = st.get("hold")
+        if isinstance(hold, dict):
+            since = release._try_parse_utc(str(hold.get("since") or ""))
+            left = max(0.0, (release.UNHOLD_AFTER - (now - since)).total_seconds() / 3600) if since else 0.0
+            hold = {**hold, "remaining_hours": math.ceil(left * 10) / 10}  # round up: never enable Unhold early
+        else:
+            hold = None
+        products[name] = {
+            **_product_meta(name, p),
+            "repo": p.get("repo"),
+            "mode": p.get("mode"),
+            "paused": bool(own_paused.get(name)),
+            "verdict": {k: v[k] for k in ("verdict", "reasons", "ship", "held", "at", "score", "relayError") if k in v} if v else None,
+            "error": err,
+            "hold": hold,
+            "inFlightSince": run.get("at") if run and run.get("event") == "started" else None,
+            "lastEvent": last.get("event") if last else None,
+            "journal": events[-5:],
+        }
+    return {"paused": status["paused"], "products": products, "journal": rel_journal[-5:]}
+
+
+def save_release(patch):
+    """POST /api/release: {action: pause|resume|unhold, product: <name>|"*"}. Returns (status, body)."""
+    if not isinstance(patch, dict):
+        return 400, {"error": "expected a JSON object"}
+    action, product = patch.get("action"), patch.get("product")
+    if action not in ("pause", "resume", "unhold"):
+        return 400, {"error": "action must be pause, resume or unhold"}
+    if not isinstance(product, str) or not product:
+        return 400, {"error": "product is required"}
+    if product == "*" and action == "unhold":
+        return 400, {"error": "unhold needs one product"}
+    try:
+        {"pause": release.pause, "resume": release.resume, "unhold": release.unhold}[action](product)
+    except store.FactoryError as e:
+        return 400, {"error": str(e)}
+    return 200, release_data()
 
 
 def comms_data():
@@ -640,6 +700,145 @@ def comms_data():
         products[prod] = prod_data
 
     return {"products": products}
+
+
+PM_ACTIONS = ("close", "reopen", "snooze", "nudge", "proto-built")
+PM_ROW_ACTIONS = ("approve", "approve-all", "restore", "reject", "unreject")
+PM_SIGNAL_ACTIONS = ("ignore", "ok", "unhide")
+PM_LAUNCH_ACTIONS = ("verdict", "unverdict", "kit")
+PM_LIFE_ACTIONS = ("unstick",)
+PM_RM_ACTIONS = ("roadmap-row", "roadmap-all")
+
+
+def pm_data():
+    """GET /api/pm: the product manager page (sweep, signals, Now priority, the memo's decisions), run now."""
+    try:
+        return 200, pm.overview()
+    except store.FactoryError as e:
+        return 500, {"error": str(e)}
+
+
+def save_pm_row(patch):
+    """approve {product, row, shown, rank} | approve-all {product, shown, proposed} | restore {product, ids, expect}
+    (Undo of an approve) | reject / unreject {product, row}. shown, proposed, ids and expect are lists of row ids:
+    the orders the page showed, so a lane that changed since is a 400, not a wrong move."""
+    action, prod, row = patch["action"], patch.get("product"), patch.get("row")
+    if not isinstance(prod, str) or prod not in store.products():
+        return 400, {"error": "product must be a configured product"}
+    if action in ("approve", "reject", "unreject") and (not isinstance(row, str) or not row.strip()):
+        return 400, {"error": "row is required"}
+    need = {"approve": ("shown",), "approve-all": ("shown", "proposed"), "restore": ("ids", "expect")}.get(action, ())
+    for k in need:
+        if not isinstance(patch.get(k), list) or not all(isinstance(i, str) for i in patch[k]):
+            return 400, {"error": f"{k} must be a list of row ids"}
+    if action == "approve" and (type(patch.get("rank")) is not int or patch["rank"] < 1):
+        return 400, {"error": "rank must be the row's shown proposed place"}
+    try:
+        if action == "approve":
+            return 200, {"ok": True, **pm.approve(prod, row, shown=patch["shown"], rank=patch["rank"])}
+        if action == "approve-all":
+            return 200, {"ok": True, **pm.approve(prod, shown=patch["shown"], proposed=patch["proposed"])}
+        if action == "restore":
+            return 200, {"ok": True, **pm.restore(prod, patch["ids"], patch["expect"])}
+        return 200, {"ok": True, **pm.reject(prod, row, undo=action == "unreject")}
+    except store.FactoryError as e:
+        return 400, {"error": str(e)}
+
+
+def save_pm_roadmap(patch):
+    """Roadmaps tab: {action: roadmap-row, row, op: approve|drop, at[, undo: true]} or {action: roadmap-all, product, at}.
+    at is the proposal's at the page shows: another proposal since is a 409. An unknown product or row is a 400;
+    a roadmap.py failure (Now full, Notion down) a 500 naming the row."""
+    undo, at = patch.get("undo", False), patch.get("at")
+    if not isinstance(undo, bool):
+        return 400, {"error": "undo must be true or false"}
+    if not isinstance(at, str) or not at:
+        return 400, {"error": "at (the proposal's at) is required"}
+    try:
+        if patch["action"] == "roadmap-all":
+            prod = patch.get("product")
+            if not isinstance(prod, str) or prod not in store.products():
+                return 400, {"error": "product must be a configured product"}
+            return 200, {"ok": True, **pm.approve_roadmap(prod, at)}
+        rid, op = patch.get("row"), patch.get("op")
+        if not isinstance(rid, str) or not rid:
+            return 400, {"error": "row is required"}
+        if op not in ("approve", "drop"):
+            return 400, {"error": "op must be approve or drop"}
+        return 200, {"ok": True, **pm.roadmap_row(rid, op, at, undo)}
+    except pm.StaleProposal as e:
+        return 409, {"error": str(e)}
+    except pm.RoadmapWriteError as e:
+        return 500, {"error": str(e), "row": e.row}
+    except store.FactoryError as e:
+        return 400, {"error": str(e)}
+
+
+def save_pm(patch):
+    """POST /api/pm: {action, project[, days]}, a Now priority action (save_pm_row), a signal action
+    {action: ignore|ok|unhide, signal} or a launch verdict {action: verdict, launch, verdict: keep|iterate|rollback}
+    | {action: unverdict, launch} | Draft the missing {action: kit, launch[, undo: true]}, a Lifecycle unstick {action: unstick, feature[, undo: true]}
+    or a Roadmaps action (save_pm_roadmap). Returns (status, body); a bad request is a 400, nothing written."""
+    if not isinstance(patch, dict):
+        return 400, {"error": "expected a JSON object"}
+    action, pid, days = patch.get("action"), patch.get("project"), patch.get("days", pm.SNOOZE)
+    if action in PM_ROW_ACTIONS:
+        return save_pm_row(patch)
+    if action in PM_SIGNAL_ACTIONS:
+        sid = patch.get("signal")
+        if not isinstance(sid, str) or not sid:
+            return 400, {"error": "signal is required"}
+        try:
+            return 200, {"ok": True, **pm.hide_signal(sid, None if action == "unhide" else action)}
+        except store.FactoryError as e:
+            return 400, {"error": str(e)}
+    if action in PM_LAUNCH_ACTIONS:
+        lid, by = patch.get("launch"), patch.get("verdict") if action == "verdict" else None
+        if not isinstance(lid, str) or not lid:
+            return 400, {"error": "launch is required"}
+        if action == "verdict" and by not in pm.VERDICTS:
+            return 400, {"error": f"verdict must be one of {', '.join(pm.VERDICTS)}"}
+        if action == "kit" and not isinstance(patch.get("undo", False), bool):
+            return 400, {"error": "undo must be true or false"}
+        try:
+            if action == "kit":
+                return 200, {"ok": True, **pm.kit(lid, patch.get("undo", False))}
+            return 200, {"ok": True, **pm.verdict(lid, by)}
+        except pm.KitError as e:
+            return 500, {"error": str(e)}
+        except store.FactoryError as e:
+            return 400, {"error": str(e)}
+    if action in PM_LIFE_ACTIONS:
+        fid, undo = patch.get("feature"), patch.get("undo", False)
+        if not isinstance(fid, str) or not fid:
+            return 400, {"error": "feature is required"}
+        if not isinstance(undo, bool):
+            return 400, {"error": "undo must be true or false"}
+        try:
+            return 200, {"ok": True, **pm.unstick(fid, undo)}
+        except store.FactoryError as e:
+            return 400, {"error": str(e)}
+    if action in PM_RM_ACTIONS:
+        return save_pm_roadmap(patch)
+    if action not in PM_ACTIONS:
+        return 400, {"error": "action must be one of " + ", ".join(PM_ACTIONS + PM_ROW_ACTIONS + PM_SIGNAL_ACTIONS + PM_LAUNCH_ACTIONS
+                                                                   + PM_LIFE_ACTIONS + PM_RM_ACTIONS)}
+    if not isinstance(pid, str) or not pid.strip():
+        return 400, {"error": "project is required"}
+    try:
+        if action == "close":
+            pm.close(pid, "closed from the page")
+        elif action == "reopen":
+            pm.reopen(pid)
+        elif action == "snooze":
+            pm.snooze(pid, days)
+        elif action == "nudge":
+            return 200, {"ok": True, **pm.nudge(pid)}
+        else:
+            pm.mark_built(pid, patch.get("proto"))
+    except store.FactoryError as e:
+        return 400, {"error": str(e)}
+    return 200, {"ok": True}
 
 
 def save_queue(patch):
@@ -931,6 +1130,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, board_data())
         if p == "/api/queue":
             return self._json(200, queue_data())
+        if p == "/api/pm":
+            return self._json(*pm_data())
+        if p == "/api/release":
+            return self._json(200, release_data())
         if p == "/api/comms":
             return self._json(200, comms_data())
         if p == "/api/office":
@@ -1007,7 +1210,7 @@ class Handler(BaseHTTPRequestHandler):
         if p is None:
             return
         m_push = MACHINE_AGENTS_PATH.fullmatch(p)
-        if p not in ("/api/answers", "/api/messages", "/api/protos", "/api/autopilot", "/api/board", "/api/assign", "/api/queue", "/api/roadmap") and not m_push:
+        if p not in ("/api/answers", "/api/messages", "/api/protos", "/api/autopilot", "/api/board", "/api/assign", "/api/queue", "/api/release", "/api/roadmap", "/api/pm") and not m_push:
             return self._json(404, {"error": "not found"})
         # no key in the URL, so the Access cookie is the only credential: refuse what another page can forge.
         # A cross-site JSON POST needs a preflight, which this server never grants (no OPTIONS).
@@ -1042,6 +1245,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json(*save_assign(patch))
         elif p == "/api/queue":
             self._json(*save_queue(patch))
+        elif p == "/api/pm":
+            self._json(*save_pm(patch))
+        elif p == "/api/release":
+            self._json(*save_release(patch))
         else:
             self._json(*save_proto(patch))
 

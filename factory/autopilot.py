@@ -208,6 +208,9 @@ def decide(cfg, pid, now, agents, inbox_threads, dry, require_due, allow_waiting
     entry = cfg["projects"][pid]
     if require_due and not _due(entry, now):
         return "not due", None
+    proj = next((p for p in store.projects() if p.get("id") == pid), None)
+    if proj and proj.get("closedAt"):
+        return _finish(entry, "skipped project closed", dry, now), None
     thread = entry.get("thread")
     if thread and not drivable(thread):
         return _finish(entry, NOT_DRIVABLE_SKIP, dry, now), None

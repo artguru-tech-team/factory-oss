@@ -6,9 +6,10 @@ import os
 import re
 import sys
 import time
+import unicodedata
 from datetime import datetime, timezone
 
-from . import assign, autopilot, comms, config, office, relay, release, roadmap, store, t3
+from . import assign, autopilot, comms, config, office, pm, relay, release, roadmap, store, suggestions, supervisor, t3
 from .comms import CommsValidationError
 from .store import FactoryError, check_id, lock, now_iso
 
@@ -148,8 +149,163 @@ def project_set(a):
 
 
 def project_list(a):
-    ps = store.projects()
-    return ps, "\n".join(f"{p['id']}\t{p['product']}\t{p['kind']}\t{p['name']}" for p in ps) or "no projects"
+    ps = [p for p in store.projects() if a.all or not p.get("closedAt")]
+    return ps, "\n".join(f"{p['id']}\t{p['product']}\t{p['kind']}\t{p['name']}" + ("\tclosed" if p.get("closedAt") else "")
+                         for p in ps) or "no projects"
+
+
+def project_close(a):
+    return pm.close(a.id, a.note or ""), f"ok: project {a.id} closed"
+
+
+def project_reopen(a):
+    return pm.reopen(a.id), f"ok: project {a.id} reopened"
+
+
+# ---------- product manager ----------
+
+def pm_sweep(a):
+    r = pm.sweep()
+    pm.record(r)
+    lines = [f"{f['group']}\t{f['project']}\t{f['title']}\t{f['evidence']}" for f in r["findings"]]
+    return r, "\n".join(lines) or "nothing slipped"
+
+
+def pm_snooze(a):
+    until = pm.snooze(a.project, a.days)
+    return {"project": a.project, "until": until}, f"ok: {a.project} " + (f"snoozed until {until}" if until else "snooze ended")
+
+
+def pm_nudge(a):
+    r = pm.nudge(a.project)
+    return r, f"{a.project}\t{r['result']}"
+
+
+def pm_signals(a):
+    r = pm.signals()
+    shown = [s for s in r["signals"] if not s.get("hidden")]
+    lines = ([f"support digest failed: {r['supportError']['error']}"] if r["supportError"] else []) + \
+        [f"could not read {e}" for e in r["errors"]] + [
+        f"{s['id']}\t{s['src']}\t{s['title']}\t{s['evidence']}\t"
+        + (", ".join(f"{m['id']} {m['title']}" for m in s["maps"]) or "no roadmap row") for s in shown]
+    return r, "\n".join(lines) or "no signals in the last 7 days"
+
+
+def pm_priority(a):
+    if a.product is not None and a.product not in store.products():
+        raise FactoryError(f"unknown product {a.product!r}")
+    r = [p for p in pm.priority(pm.signals()["signals"]) if a.product in (None, p["product"])]
+    lines = [f"{p['product']}\t{x['rank']}\t{x['move']}\t{x['id']}\t{x['title']}\t{x['why']}" + ("\trejected" if x["rejected"] else "")
+             for p in r for x in p["rows"]]
+    return r, "\n".join(lines) or "no Now rows"
+
+
+def pm_approve(a):
+    if bool(a.row) == a.all:
+        raise FactoryError("name one row id, or --all for the whole proposed order")
+    r = pm.approve(a.product, None if a.all else a.row)
+    return r, (f"ok: {a.product} " + ("Now order applied" if a.all else f"{a.row} moved")
+               + f" (undo: factory pm restore {a.product} {' '.join(r['before'])} --expect {' '.join(r['after'])})")
+
+
+def pm_restore(a):
+    r = pm.restore(a.product, a.ids, a.expect)
+    return r, f"ok: {a.product} Now order {' '.join(r['order'])}"
+
+
+def pm_reject(a):
+    r = pm.reject(a.product, a.row, undo=a.undo)
+    return r, f"ok: {a.product} {a.row} " + ("may move again" if a.undo else "stays where it is")
+
+
+def pm_signal(a):
+    r = pm.hide_signal(a.id, None if a.action == "unhide" else a.action)
+    return r, f"ok: {a.id} " + {"ignore": "ignored for 14 days", "ok": "noted", "unhide": "shown again"}[a.action]
+
+
+def pm_launches(a):
+    if a.product is not None and a.product not in release.release()["products"]:
+        raise FactoryError(f"unknown release product {a.product!r}")
+    r = [c for c in pm.launches(pm.signals()["signals"]) if a.product in (None, c["product"])]
+    mark = {"y": "ok", "n": "FAIL", "w": "warn"}
+    lines = [f"{c['id']}\t{c['name']}\t{c['at'][:10]} day {c['day']}\t" + " ".join(f"#{p['number']} {p['title']}".strip() for p in c["prs"])
+             + (f"\tverdict {c['verdict']['by']}" if c["verdict"] else f"\tnext: {c['next']}")
+             + "".join(f"\n  {mark[x['state']]} {x['name']}: {x['detail']}" for x in c["chips"])
+             + "\n  kit: " + (c["kit"].get("error") or c["kit"].get("note") or " ".join(
+                 f"{mark[x['state']]} {x['name']}" + (f" ({x['detail']})" if x["detail"] else "") for x in c["kit"]["items"]))
+             + (f", changelog stored {c['kit']['queued']['at'][:10]}" if c["kit"]["queued"] else "")
+             + "".join(f"\n  {k} {v['at'][:10]}: " + ", ".join(f"{mark.get(x['state'], '?')} {x['name']}" for x in v["chips"])
+                       for k, v in c["checks"].items()) for c in r]
+    return r, "\n".join(lines) or f"no launches in the last {pm.LAUNCH_DAYS} days"
+
+
+def pm_verdict(a):
+    if a.undo == bool(a.verdict):
+        raise FactoryError("name a verdict (keep, iterate, rollback), or --undo to remove it")
+    r = pm.verdict(a.id, None if a.undo else a.verdict)
+    return r, f"ok: {a.id} " + ("verdict removed" if a.undo else f"verdict {a.verdict}") + (f" ({r['command']})" if r.get("command") else "")
+
+
+def pm_kit(a):
+    r = pm.kit(a.id, a.undo)
+    return r, f"ok: {a.id} " + ("kit note removed (the changelog stays)" if a.undo
+                                else "changelog stored (the kit line shows when the email, video and caption come)")
+
+
+def pm_lifecycle(a):
+    errs = []
+    r = pm.lifecycle(pm.signals()["signals"], pm.unreleased(), errs=errs)
+    for e in errs:  # stderr, so --json stays one JSON value
+        sys.stderr.write(f"could not read {e}\n")
+    lines = [f"{x['id']}\t{x['stageName'] or '-'}\t" + ("-" if x["days"] is None else f"{x['days']}d")
+             + ("\tSTUCK" if x["stuck"] else "") + (f"\tnudged {x['nudged'][:10]}" if x["nudged"] else "")
+             + f"\t{x['title']}\t{x['note']}" for x in r]
+    return r, "\n".join(lines) or "no features followed"
+
+
+def pm_unstick(a):
+    r = pm.unstick(a.id, a.undo)  # refuses, naming them, when a source it needs could not be read
+    return r, f"ok: {a.id} " + ("nudge removed (the inbox item stays)" if a.undo else f"nudged, inbox item {r['item']}")
+
+
+def pm_propose_roadmap(a):
+    try:
+        with open(os.path.expanduser(a.file), encoding="utf-8") as f:
+            rows = json.load(f)
+    except OSError as e:
+        raise FactoryError(f"cannot read {a.file}: {e.strerror}")
+    except ValueError as e:
+        raise FactoryError(f"{a.file} is not valid JSON: {e}")
+    r = pm.propose_roadmap(a.product, rows, a.sources or "")
+    return r, f"ok: {a.product} draft of {len(r['rows'])} rows, see Product manager > Roadmaps"
+
+
+def pm_roadmaps(a):
+    r = pm.roadmaps()
+    tag = {"none": "no roadmap", "draft": "draft ready", "live": "in Roadmap view"}
+    lines = [f"{c['product']}\t{tag[c['status']]}\tSources: {c['sources']}" + (f"\tproposed {c['at']}" if c["at"] else "") + ("" if c["rows"] or c["status"] != "none" else f"\n  agent: {c['command']}")
+             + "".join(f"\n  {x['id']}\t{x['status']}" + (f" as {x['item']}" if x.get("item") else "") + f"\t{x['lane']}\t{x['title']}" for x in c["rows"])
+             for c in r]
+    return r, "\n".join(lines) or "no products"
+
+
+def pm_roadmap_row(a):
+    r = pm.roadmap_row(a.id, a.action, a.at or pm.proposal_at(row=a.id), a.undo)
+    row = r["row"]
+    msg = {"approved": f"added as {row.get('item')}", "dropped": "dropped", "proposed": "back to proposed"}[row["status"]]
+    return r, f"ok: {a.id} {msg}" + (f" ({row['warning']})" if row.get("warning") else "")
+
+
+def pm_approve_roadmap(a):
+    r = pm.approve_roadmap(a.product, a.at or pm.proposal_at(a.product))
+    warn = [f"{x['id']}: {x['warning']}" for x in r["rows"] if x.get("warning")]
+    return r, f"ok: {a.product} {r['approved']} rows added: " + ", ".join(f"{x['id']} as {x['item']}" for x in r["rows"]) \
+        + "".join(f"\n  {w}" for w in warn)
+
+
+def pm_memo(a):
+    item = pm.memo()
+    return item, item["id"] if item else "nothing to file: no findings, or an earlier pm item is still open"
 
 
 # ---------- build plans ----------
@@ -552,6 +708,60 @@ def office_serve_public(a):
     return None, ""
 
 
+def office_serve_suggest(a):
+    from . import suggest_serve
+    suggest_serve.serve(host=a.host, port=a.port)
+    return None, ""
+
+
+def _one_line(text):
+    """Escape newlines and other control or format characters so one idea is one line."""
+    return "".join(
+        "\\n" if c == "\n" else f"\\u{ord(c):04x}" if unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp") else c
+        for c in text)
+
+
+def suggestions_list(a):
+    items = suggestions.list_ideas(product=a.product, status=a.status, held=a.held)
+    if not items:
+        return items, "(no suggestions)" if not a.held else "(no suggestions held)"
+    lines = []
+    for it in items:
+        status_part = f"({it['status']}, {it.get('votes', 0)} votes)"
+        hidden_part = " [hidden]" if it.get("hidden") else ""
+        hidden_part = {0: " [pending]", 2: " [held]"}.get(it.get("screened"), "") + hidden_part
+        email_part = f" <{_one_line(it['email'])}>" if it.get("email") else ""
+        lines.append(f"#{it['id']} [{it['product']}] {status_part}{hidden_part} {_one_line(it['text'])}{email_part}")
+    return items, chr(10).join(lines)
+
+
+def suggestions_status(a):
+    suggestions.set_status(a.id, a.status)
+    return {"id": a.id, "status": a.status}, f"suggestion #{a.id} status set to {a.status}"
+
+
+def suggestions_hide(a):
+    suggestions.hide(a.id)
+    return {"id": a.id, "hidden": 1}, f"suggestion #{a.id} hidden"
+
+
+def suggestions_pass(a):
+    suggestions.pass_idea(a.id)
+    return {"id": a.id, "screened": 1}, f"suggestion #{a.id} passed"
+
+
+def suggestions_unhide(a):
+    suggestions.unhide(a.id)
+    held = (suggestions.get_idea(a.id) or {}).get("screened") != 1
+    note = " (still held: run `factory suggestions pass <id>` to publish)" if held else ""
+    return {"id": a.id, "hidden": 0}, f"suggestion #{a.id} unhidden" + note
+
+
+def suggestions_screen(a):
+    res = suggestions.screen_pending()
+    return res, f"screened {res.get('screened', 0)}: {res.get('passed', 0)} passed, {res.get('held', 0)} held"
+
+
 # ---------- machines ----------
 
 MACHINE_ID_RE = re.compile(r"^[a-z0-9-]{1,32}$")
@@ -867,19 +1077,7 @@ def proto_show(a):
 
 
 def proto_built(a):
-    with lock():
-        protos = store.protos()
-        proto = store.find_proto(protos, a.id)
-        if proto is None:
-            raise FactoryError(f"no prototype {a.id!r} (see: factory proto list)")
-        versions = proto.get("versions", [])
-        # the newest version that got past review; an older validated one under a built one is history
-        target = next((v for v in versions if v.get("status") in ("validated", "built")), versions[0])
-        if target.get("status") != "validated":
-            raise FactoryError(f"{a.id} v{target.get('v')} is {target.get('status')}, not validated")
-        target["status"] = "built"
-        target["pr"] = count(a.pr)
-        store.save_protos(protos)
+    target = store.mark_proto_built(a.id, count(a.pr))
     return target, f"ok: {a.id} v{target['v']} built (PR #{a.pr})"
 
 
@@ -1083,6 +1281,45 @@ def autopilot_run(a):
     if not a.dry_run and not summary.get("paused"):
         relay.send_queued()
     return {"paused": summary["paused"], "results": summary["results"]}, out
+
+
+# ---------- supervisor ----------
+
+def supervise_run(a):
+    if a.dry_run and a.live:
+        raise FactoryError("use --dry-run or --live, not both")
+    rep = supervisor.run(live=False if a.dry_run else (True if a.live else None))
+    if rep["live"] and any(r["did"].startswith("dispatched") for r in rep["findings"]):
+        relay.send_queued()
+    if any(r["did"].startswith("error") for r in rep["findings"]):
+        a.exit_code = 1  # cron logs show it; the failed action retries next run
+    lines = [f"supervisor {'live' if rep['live'] else 'dry run'}: {len(rep['findings'])} finding(s), {len(rep['resolved'])} resolved"]
+    lines += [f"{r['severity']}\t{r['signature']}\t{r['did']}" for r in rep["findings"]]
+    return rep, "\n".join(lines)
+
+
+def supervise_status(a):
+    state, mins = supervisor.heartbeat()
+    if state in ("dead", "degraded"):
+        a.exit_code = 3
+    return {"state": state, "minutes": mins}, state if mins is None else f"{state} (last run {mins} min ago)"
+
+
+def supervise_list(a):
+    rows = sorted(supervisor.state()["findings"].values(), key=lambda r: r["last_seen"], reverse=True)
+    return rows, "\n".join(f"{r['status']}\t{r['severity']}\t{r['signature']}\t{r['evidence']}\t{r.get('last_result') or r.get('would') or ''}" for r in rows) or "no findings"
+
+
+def supervise_mute(a):
+    if not 0 < a.hours <= 24 * 30:
+        raise FactoryError("--hours must be between 1 and 720")
+    rec = supervisor.mute(a.signature, a.hours)
+    return rec, f"ok: {a.signature} muted until {rec['muted_until']}"
+
+
+def supervise_false_alarm(a):
+    supervisor.false_alarm(a.signature)
+    return {"signature": a.signature}, f"ok: {a.signature} ignored until its evidence changes"
 
 
 # ---------- board ----------
@@ -1520,6 +1757,11 @@ def fixlane_collect(a):
     return fixlane_mod.collect()
 
 
+def fixlane_triage(a):
+    from . import fixlane as fixlane_mod
+    return fixlane_mod.triage()
+
+
 def fixlane_status(a):
     from . import fixlane as fixlane_mod
     return fixlane_mod.status()
@@ -1578,7 +1820,67 @@ def parser():
     p.add_argument("--add-pr", action="append", help="PR number or owner/repo#N added to the list (repeat; keeps the others)")
     p.add_argument("--match", action="append", help="T3 thread title text that belongs to this project (repeat)")
     p.add_argument("--source", choices=["ds-kit", "manual"], help="where the build reads the plan")
-    cmd(g, "list", project_list, "list projects")
+    p = cmd(g, "list", project_list, "list projects (closed ones only with --all)")
+    p.add_argument("--all", action="store_true", help="include closed projects")
+    p = cmd(g, "close", project_close, "close a finished project: it leaves the page's lists")
+    p.add_argument("id")
+    p.add_argument("--note", help="why it is closed")
+    p = cmd(g, "reopen", project_reopen, "reopen a closed project")
+    p.add_argument("id")
+
+    g = group("pm", "the product manager: what slipped")
+    cmd(g, "sweep", pm_sweep, "list finished, unbuilt, quiet and late projects")
+    p = cmd(g, "snooze", pm_snooze, "leave a project out of the sweep for N days (0 ends it)")
+    p.add_argument("project")
+    p.add_argument("--days", type=int, required=True)
+    p = cmd(g, "nudge", pm_nudge, "nudge a project's agent session now")
+    p.add_argument("project")
+    cmd(g, "memo", pm_memo, "file one inbox item with today's decisions (nothing on a quiet day)")
+    cmd(g, "signals", pm_signals, "list the last 7 days of signals and the roadmap rows they map to")
+    p = cmd(g, "priority", pm_priority, "propose an order for each product's Now lane")
+    p.add_argument("--product")
+    p = cmd(g, "approve", pm_approve, "apply a row's proposed Now move (or --all for the whole order)")
+    p.add_argument("product")
+    p.add_argument("row", nargs="?")
+    p.add_argument("--all", action="store_true")
+    p = cmd(g, "restore", pm_restore, "undo an approve: put a Now lane back in an order, while it is still in --expect")
+    p.add_argument("product")
+    p.add_argument("ids", nargs="+", help="the order to restore (the approve's before)")
+    p.add_argument("--expect", nargs="+", required=True, help="the lane order now (the approve's after)")
+    p = cmd(g, "reject", pm_reject, "keep a Now row where it is (--undo lets the proposal move it again)")
+    p.add_argument("product")
+    p.add_argument("row")
+    p.add_argument("--undo", action="store_true")
+    p = cmd(g, "signal", pm_signal, "ignore (14 days), ok (noted) or unhide a signal")
+    p.add_argument("action", choices=["ignore", "ok", "unhide"])
+    p.add_argument("id")
+    p = cmd(g, "launches", pm_launches, "list the last 35 days of launches with their checks (comms, errors, tickets)")
+    p.add_argument("--product")
+    p = cmd(g, "verdict", pm_verdict, "record keep, iterate or rollback on a launch (--undo removes it; nothing is rolled back)")
+    p.add_argument("id")
+    p.add_argument("verdict", nargs="?", choices=list(pm.VERDICTS))
+    p.add_argument("--undo", action="store_true")
+    p = cmd(g, "kit", pm_kit, "Draft the missing: store a launch's missing changelog (--undo removes the note; the changelog stays; no agent starts)")
+    p.add_argument("id")
+    p.add_argument("--undo", action="store_true")
+
+    cmd(g, "lifecycle", pm_lifecycle, "list every followed feature's stage, days there and whether it is stuck")
+    p = cmd(g, "unstick", pm_unstick, "file one inbox item for a stuck feature (--undo removes the nudge note; no agent starts)")
+    p.add_argument("id")
+    p.add_argument("--undo", action="store_true")
+    p = cmd(g, "propose-roadmap", pm_propose_roadmap, "store an agent's proposed first roadmap for a product with none (3 to 12 rows)")
+    p.add_argument("product")
+    p.add_argument("--file", required=True, help='JSON list of {"lane": "now|next|later", "title", "goal", "evidence"}')
+    p.add_argument("--sources", help="what the rows were drawn from, shown on the card")
+    cmd(g, "roadmaps", pm_roadmaps, "list each product's roadmap status and proposed rows")
+    p = cmd(g, "roadmap-row", pm_roadmap_row, "approve a proposed row into the roadmap (no undo) or drop it (--undo puts it back)")
+    p.add_argument("id")
+    p.add_argument("action", choices=["approve", "drop"])
+    p.add_argument("--undo", action="store_true")
+    p.add_argument("--at", help="the proposal's at, as `pm roadmaps` shows it (default: the stored one); another proposal since is refused")
+    p = cmd(g, "approve-roadmap", pm_approve_roadmap, "approve every proposed row of a product in order (stops at the first roadmap error)")
+    p.add_argument("product")
+    p.add_argument("--at", help="the proposal's at, as `pm roadmaps` shows it (default: the stored one); another proposal since is refused")
 
     g = group("plan", "build plans")
     p = cmd(g, "phase", plan_phase, "add or change a phase")
@@ -1732,6 +2034,19 @@ def parser():
     p.add_argument("--project", help="linked factory project id (or \x27none\x27)")
     p = cmd(g, "sync", roadmap_sync, "sync roadmap from Notion database")
     p.add_argument("product", nargs="?", help="product key (default: all with Notion configured)")
+
+    sv = sub.add_parser("supervise", parents=[common], help="compare plans and self-reports with the facts (every 30 min)")
+    sv.set_defaults(fn=supervise_run, sub=None)
+    sv.add_argument("--dry-run", action="store_true", help="store findings, send nothing (the default unless supervisor.live)")
+    sv.add_argument("--live", action="store_true", help="act on findings even when supervisor.live is unset")
+    g = sv.add_subparsers(dest="sub", parser_class=Parser)
+    cmd(g, "status", supervise_status, "alive, late or dead from the last run (exit 3 when dead)")
+    cmd(g, "list", supervise_list, "list stored findings")
+    p = cmd(g, "mute", supervise_mute, "stop acting on a finding for a while")
+    p.add_argument("signature")
+    p.add_argument("--hours", type=int, default=24)
+    p = cmd(g, "false-alarm", supervise_false_alarm, "ignore a finding until its evidence changes")
+    p.add_argument("signature")
 
     g = group("autopilot", "opt-in scheduled nudges that keep a project's session moving")
     p = cmd(g, "add", autopilot_add, "add a project to autopilot")
@@ -1948,6 +2263,7 @@ def parser():
     p = cmd(g, "run", fixlane_run, "pick ready issues and start fix tasks")
     p.add_argument("--dry-run", action="store_true", help="decide without writing tasks or modifying issues")
     cmd(g, "collect", fixlane_collect, "collect results of finished fix tasks")
+    cmd(g, "triage", fixlane_triage, "ask the dispatcher for a triage agent on the intake issues (auto-promote)")
     cmd(g, "status", fixlane_status, "list fix tasks with their state")
     p = cmd(g, "retry", fixlane_retry, "mark an issue's latest fix task retired so it can be picked again")
     p.add_argument("target", help="owner/repo#number")
@@ -1960,6 +2276,25 @@ def parser():
     p = cmd(g, "serve-public", office_serve_public, "serve the public office page")
     p.add_argument("--host", default="127.0.0.1", help="host to bind (default 127.0.0.1)")
     p.add_argument("--port", type=int, default=3046, help="port to bind (default 3046)")
+    p = cmd(g, "serve-suggest", office_serve_suggest, "serve the suggestions service")
+    p.add_argument("--host", default="127.0.0.1", help="host to bind (default 127.0.0.1)")
+    p.add_argument("--port", type=int, default=3047, help="port to bind (default 3047)")
+
+    g = group("suggestions", "product feature suggestions")
+    p = cmd(g, "list", suggestions_list, "list suggestions")
+    p.add_argument("--product", help="filter by product key")
+    p.add_argument("--status", choices=suggestions.STATUSES, help="filter by status")
+    p.add_argument("--held", action="store_true", help="show held (screened=2) suggestions")
+    p = cmd(g, "status", suggestions_status, "change a suggestion status")
+    p.add_argument("id", type=int, help="suggestion id")
+    p.add_argument("status", choices=suggestions.STATUSES, help="new status")
+    p = cmd(g, "hide", suggestions_hide, "hide a suggestion from the public feed (the owner list still shows it)")
+    p.add_argument("id", type=int, help="suggestion id")
+    p = cmd(g, "unhide", suggestions_unhide, "show a hidden suggestion in the public feed again")
+    p.add_argument("id", type=int, help="suggestion id")
+    p = cmd(g, "pass", suggestions_pass, "publish a held, pending or hidden suggestion")
+    p.add_argument("id", type=int, help="suggestion id")
+    cmd(g, "screen", suggestions_screen, "run automatic screening on pending suggestions")
 
     g = group("machine", "extra machines pushing agent telemetry")
     p = cmd(g, "add", machine_add, "register a machine for remote agent telemetry")
@@ -2003,7 +2338,7 @@ def main(argv=None):
     except Exception as e:  # the contract is one line on stderr, never a traceback
         print(f"factory: error: {type(e).__name__}: {str(e).splitlines()[0] if str(e) else ''}", file=sys.stderr)
         return 1
-    if a.fn not in (serve, office_serve_public):
+    if a.fn not in (serve, office_serve_public, office_serve_suggest):
         print(json.dumps(obj, ensure_ascii=False, indent=2) if a.json else text)
     return getattr(a, "exit_code", 0)
 

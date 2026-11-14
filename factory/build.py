@@ -11,7 +11,7 @@ import sys
 from contextlib import closing
 from datetime import date, datetime, timedelta, timezone
 
-from . import assign, autopilot, board, config, office, office_public, relay, roadmap, skills, sources, store, t3, tokens
+from . import assign, autopilot, board, config, fixlane, office, office_public, pm, relay, release, roadmap, skills, sources, store, supervisor, t3, tokens
 from .store import FactoryError, iso, now_iso
 
 TEMPLATE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "template", "factory.html")
@@ -74,7 +74,7 @@ def sync_phases(raw, rows, warnings):
 def project_data(p, product, today, warnings):
     repo = (product.get("repos") or [None])[0]
     ups = sorted(store.read_lines(f"updates/{p['id']}.jsonl"), key=lambda u: u["at"], reverse=True)[:10]
-    out = {k: p.get(k) for k in ("id", "product", "kind", "name", "feat", "prio")}
+    out = {k: p.get(k) for k in ("id", "product", "kind", "name", "feat", "prio", "closedAt", "closeNote")}
     out.update(next=p.get("next") or [], prs=[sources.pr_key(n, repo) for n in p.get("prs", [])],
                updates=[[u["at"], u["agent"], u["health"], u["text"]] for u in ups])
     if p["kind"] == "build" and p.get("source") == "ds-kit":
@@ -308,8 +308,10 @@ def board_data(products, now, warnings):
         data = board.collect(products, now)
     except Exception as e:  # collect should never raise; this is a last line of defence
         warnings.append(f"board: {e}")
-        return {"cards": [], "fetchedAt": None, "error": str(e).splitlines()[0], "auto_promote": board.auto_promote()}
+        return {"cards": [], "fetchedAt": None, "error": str(e).splitlines()[0], "auto_promote": board.auto_promote(),
+                "max_per_day": fixlane.max_per_day()}
     data["auto_promote"] = board.auto_promote()
+    data["max_per_day"] = fixlane.max_per_day()
     if data.get("error"):
         warnings.append(f"board: {data['error']}")
     for repo, err in (data.get("repoErrors") or {}).items():
@@ -340,6 +342,55 @@ def roadmap_data(projects, agents, today, warnings):
         "cap": roadmap.cap(),
         "error": None,
     }
+
+def _sv_snapshot(sn):
+    """The facts snapshot if it has the shape the page reads, else None (a bad file must not break the tab)."""
+    if not isinstance(sn, dict):
+        return None
+    rows = lambda k: isinstance(sn.get(k, []), list) and all(isinstance(r, dict) for r in sn.get(k, []))
+    vps = sn.get("vps", {})
+    num = lambda v: v is None or type(v) in (int, float)
+    if not (rows("jobs") and rows("health") and isinstance(vps, dict)
+            and num(vps.get("disk_pct")) and num(vps.get("mem_pct"))
+            and isinstance(vps.get("thresholds", {}), dict) and all(num(v) for v in vps.get("thresholds", {}).values())):
+        return None
+    return sn
+
+
+def supervisor_data(now, warnings):
+    """The supervisor's last run for the Automation tab: heartbeat, the findings worth showing
+    (open first, crit first, then newest; closed ones only for 24 h) and the facts snapshot."""
+    now = release._now_utc(now)
+    try:
+        st = supervisor.state()
+    except FactoryError as e:
+        warnings.append(f"supervisor.json: {e}")
+        return {"status": "dead", "minutes": None, "lastRun": None, "live": False, "findings": [], "snapshot": None, "error": str(e)}
+    status, minutes = supervisor.heartbeat(now)
+    parsed = supervisor._parse(st.get("last_run"))
+    last_run = store.iso(parsed) if parsed else None  # normalised: the page parses it with Date
+    live = st["live"] if isinstance(st.get("live"), bool) else supervisor.is_live()  # the mode of the run the cards show
+    rows = []
+    for rec in st["findings"].values():
+        seen = supervisor._parse(rec.get("last_seen"))
+        is_open = rec["status"] in ("open", "escalated")
+        if not is_open and (not seen or now - seen > supervisor.WINDOW):
+            continue
+        kind = (rec.get("action") or {}).get("kind")
+        used = sum(1 for t in rec["actions_at"] if (supervisor._parse(t) or now) > now - supervisor.WINDOW)
+        rows.append({"signature": rec.get("signature"), "severity": rec.get("severity"), "status": rec["status"],
+                     "title": rec.get("title"), "evidence": rec.get("evidence"), "check": rec.get("check"),
+                     "action": kind, "did": rec.get("did") or (rec.get("last_result") if live else rec.get("would")),
+                     "lastResult": rec.get("last_result"),
+                     # only dispatch and escalate spend the budget (supervisor.perform); escalate files once
+                     "used": min(used, supervisor.BUDGET if kind == "dispatch" else 1) if kind in ("dispatch", "escalate") else None,
+                     "budget": {"dispatch": supervisor.BUDGET, "escalate": 1}.get(kind),
+                     "first_seen": rec.get("first_seen"), "last_seen": rec.get("last_seen")})
+    rows.sort(key=lambda r: str(r["last_seen"] or ""), reverse=True)
+    rows.sort(key=lambda r: (r["status"] not in ("open", "escalated"), r["severity"] != "crit"))
+    return {"status": status, "minutes": minutes, "lastRun": last_run, "live": live, "findings": rows,
+            "snapshot": _sv_snapshot(st.get("snapshot")), "error": None}
+
 
 def digest_data(now, warnings):
     try:
@@ -421,6 +472,11 @@ def collect(now=None):
         warnings.append(f"assign: {e}")
         assign_block = assign.empty()
     roadmap_block = roadmap_data(projects, agents, today, warnings)
+    try:
+        pm_total = pm.sweep(now)["total"]
+    except Exception as e:  # a malformed phase must cost the PM badge, not the whole page
+        warnings.append(f"product manager: {e}")
+        pm_total = 0
     return {
         "builtAt": iso(now),
         "assign": assign_block,
@@ -434,7 +490,9 @@ def collect(now=None):
         "protos": protos, "protoError": proto_error,
         "autopilot": autopilot_rows,
         "board": board_rows,
+        "supervisor": supervisor_data(now, warnings),
         "roadmap": roadmap_block,
+        "pm": {"total": pm_total},
         "digest": digest_block,
         "levers": levers, "answers": answers,
         "prs": {**rows, **sources.prs_for([k for k in pr_keys if k not in asked], warnings)}, "log": log_rows(box, raw, ids), "provColors": PROV_COLORS,

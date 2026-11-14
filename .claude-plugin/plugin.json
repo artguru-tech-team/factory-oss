@@ -1,0 +1,6 @@
+{
+  "name": "factory",
+  "description": "Agent skills for the factory dashboard: the factory CLI workflow and the daily release manager.",
+  "version": "1.0.0",
+  "license": "MIT"
+}

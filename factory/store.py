@@ -357,3 +357,20 @@ def roadmap():
 def save_roadmap(data):
     write(ROADMAP_REL, data)
 
+
+def mark_proto_built(proto_id, pr=0):
+    """Mark a prototype's newest reviewed version built; it must be validated."""
+    with lock():
+        all_protos = protos()
+        proto = find_proto(all_protos, proto_id)
+        if proto is None:
+            raise FactoryError(f"no prototype {proto_id!r} (see: factory proto list)")
+        versions = proto.get("versions", [])
+        # the newest version that got past review; an older validated one under a built one is history
+        target = next((v for v in versions if v.get("status") in ("validated", "built")), versions[0])
+        if target.get("status") != "validated":
+            raise FactoryError(f"{proto_id} v{target.get('v')} is {target.get('status')}, not validated")
+        target["status"] = "built"
+        target["pr"] = pr
+        save_protos(all_protos)
+    return target

@@ -420,8 +420,9 @@ def promote(repo, number):
         raise BoardError("already promoted or closed on GitHub", 409)
     _ensure_label(repo, "factory", FACTORY_LABEL_DESC, FACTORY_LABEL_COLOR)
     edit = ["gh", "issue", "edit", str(number), "--repo", repo, "--add-label", "factory"]
-    if "intake" in labels:
-        edit += ["--remove-label", "intake"]
+    for gone in ("intake", "needs-decision"):  # an answered outlier is promoted out of "waiting" too
+        if gone in labels:
+            edit += ["--remove-label", gone]
     sources.run(*edit)
     sources.run("gh", "issue", "comment", str(number), "--repo", repo,
                 "--body", "Promoted from the factory board.")

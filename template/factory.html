@@ -201,6 +201,10 @@ svg.chart text.v{fill:var(--paper)}
 .tbl td.num{white-space:nowrap}
 .hint{font-size:11px;color:var(--ash);display:flex;gap:4px;align-items:center}
 @media (max-width:1099px){.hint{display:none}}
+.sv-card{cursor:pointer;margin-bottom:8px;display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:10px;padding:10px 12px}.sv-card.done{opacity:.6}
+.sv-side{text-align:right;max-width:240px;overflow-wrap:anywhere}.sv-side .badge{white-space:normal;display:inline-block;max-width:100%}.sv-detail{grid-column:1/-1;border-top:.5px solid var(--graphite);margin-top:10px;padding-top:10px;font-size:12px;cursor:auto;display:grid;gap:4px}
+.sv-detail pre{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mist);user-select:text}
+@media (max-width:560px){.sv-card{grid-template-columns:minmax(0,1fr)}.sv-side{text-align:left;max-width:none}}
 @media (max-width:720px){.agent,.ib-row .when,.gauge-l,.meta-line,.kbd{font-size:12px}}
 
 /* all view rows */
@@ -439,6 +443,35 @@ dialog.drawer[open]::backdrop{background:rgba(8,9,10,.55)}
 .seg{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
 .seg button{height:28px;padding:0 10px;border:0;border-radius:9999px;background:var(--wash);color:var(--mist);font-size:12px;display:inline-flex;gap:6px;align-items:center;white-space:nowrap;cursor:pointer}
 .seg button[aria-selected=true]{background:var(--paper);color:var(--void);font-weight:510}
+
+/* Releases (Automation) */
+.rl-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}
+.rl-sum{font-size:12px;color:var(--fog)} .rl-bar .btn{margin-left:auto}
+.rl-banner{margin:0 0 12px;padding:10px 14px;border-radius:8px;background:rgba(242,153,74,.12);border:1px solid rgba(242,153,74,.4);color:var(--paper);font-size:13px}
+.rl-grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:1100px){.rl-grid{grid-template-columns:1fr 1fr}}
+.rl-card{background:var(--carbon);border-radius:12px;box-shadow:inset 0 0 0 1px var(--graphite);padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.rl-card.paused,.rl-card.hold{border-left:3px solid var(--orange)} .rl-card.err{border-left:3px solid var(--red)}
+.rl-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.rl-name{font-size:15px;font-weight:510;color:var(--paper);display:flex;align-items:center;gap:8px}
+.rl-repo{font:11px var(--mono);color:var(--ash);margin-top:2px}
+.rl-mode{font:500 11px var(--mono);padding:2px 7px;border-radius:4px;text-transform:uppercase;background:var(--wash);color:var(--fog);border:1px solid var(--line)}
+.rl-mode.live{background:rgba(39,166,68,.12);color:var(--green);border-color:rgba(39,166,68,.3)}
+.rl-verdict{border-radius:8px;padding:12px 14px;background:var(--obsidian);border:1px solid var(--graphite);display:flex;flex-direction:column;gap:8px}
+.rl-pill{align-self:flex-start;font:600 12px var(--mono);padding:3px 10px;border-radius:9999px;text-transform:uppercase;letter-spacing:.03em;background:var(--wash);color:var(--fog);border:1px solid var(--line)}
+.rl-pill.ok{background:rgba(39,166,68,.18);color:var(--green);border-color:rgba(39,166,68,.4)}
+.rl-pill.warn{background:rgba(242,153,74,.18);color:var(--orange);border-color:rgba(242,153,74,.4)}
+.rl-pill.bad{background:rgba(235,87,87,.18);color:var(--red);border-color:rgba(235,87,87,.4)}
+.rl-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.rl-box{border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:12px;background:rgba(242,153,74,.08);border:1px solid rgba(242,153,74,.35)}
+.rl-box.err{background:rgba(235,87,87,.08);border-color:rgba(235,87,87,.35)} .rl-box.err .mono{color:var(--red);word-break:break-word}
+.rl-box .row2{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rl-sec{font-size:11px;font-weight:510;text-transform:uppercase;letter-spacing:.04em;color:var(--fog);margin-bottom:4px}
+.rl-ev{display:flex;gap:8px;align-items:baseline;font-size:12px;padding:3px 0}
+.rl-ev .ev{font:600 11px var(--mono);text-transform:uppercase;color:var(--fog)} .rl-ev .ev.shipped{color:var(--green)} .rl-ev .ev.rolled-back,.rl-ev .ev.rollback-failed{color:var(--red)} .rl-ev .ev.held{color:var(--orange)}
+.rl-foot{margin-top:auto;padding-top:10px;border-top:.5px solid var(--graphite);display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--ash)}
+.rl-state{text-align:center;padding:32px 16px;color:var(--fog)} .rl-state h3{margin-bottom:6px}
+@media(max-width:700px){.rl .btn{min-height:44px}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;max-width:calc(100vw - 32px);padding:9px 14px;border-radius:6px;background:var(--obsidian);box-shadow:inset 0 0 0 1px var(--smoke),rgba(8,9,10,.6) 0 4px 32px;font-size:13px;color:var(--paper)}
 @media (max-width:899px){.toast{bottom:76px}}
 .proto-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 14px}
@@ -576,6 +609,49 @@ dialog#assignDrawer{width:min(520px,calc(100vw - 16px))}
 .bcard .t{font-size:13px;color:var(--paper);font-weight:500;line-height:1.4;margin:6px 0 4px}
 .bcard .card-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 /* --- End Board View --- */
+
+/* --- Product manager View --- */
+.pm-head{padding-top:8px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:6px}
+.pm-lede{color:var(--mist);font-size:13px}
+.pm-meta{color:var(--fog);font:400 12px var(--mono);margin-top:4px}
+.pm-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0 6px}
+.pm-stat{text-align:left;background:var(--carbon);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;color:inherit;font:inherit}
+.pm-stat[aria-pressed=true]{border-color:var(--mist)}
+.pm-stat .n{font:600 22px var(--sans)}.pm-stat .l{color:var(--fog);font-size:12px}
+.pm-grp{margin-top:18px}.pm-grp h2{margin:0 0 2px}
+.pm-grp .why{color:var(--fog);font-size:12px;margin-bottom:8px}
+.pm-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.pm-row{display:flex;gap:12px;align-items:center;background:var(--carbon);border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:6px;flex-wrap:wrap}
+.pm-row.gone{opacity:.5}.pm-row .main{flex:1;min-width:240px}
+.pm-row .t{font-weight:500;color:var(--paper)}.pm-row .e{color:var(--fog);font-size:12px;margin-top:2px}
+.pm-tag{font:11px var(--mono);color:var(--fog);border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin-right:6px;white-space:nowrap}
+.pm-acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pm-done{color:var(--green);font-size:12px}
+.pm-empty{text-align:center;padding:60px 16px;color:var(--fog)}.pm-empty .big{font-size:16px;color:var(--bone);margin-bottom:6px}
+.pm-skel{height:44px;border-radius:9px;background:linear-gradient(90deg,var(--carbon),var(--obsidian),var(--carbon));background-size:200% 100%;animation:skel-pulse 1.8s infinite;margin-bottom:6px}
+.pm-err{background:#2a1214;border:1px solid #5a2328;color:#f3b0b0;border-radius:9px;padding:10px 12px;font-size:13px;margin:12px 0;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.card.closed{opacity:.6}.card .pm-closed{font:400 11px var(--mono);color:var(--fog);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.pm-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
+.pm-tab{background:var(--obsidian);border:1px solid var(--line);color:var(--mist);border-radius:999px;padding:5px 12px;cursor:pointer;font:500 12px var(--sans)}
+.pm-tab[aria-pressed=true]{background:var(--paper);color:var(--void)}.pm-tab .c{font-family:var(--mono);opacity:.7;margin-left:4px}
+.pm-memo{background:var(--carbon);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:6px}
+.pm-memo ol{margin:8px 0 0;padding-left:20px}.pm-memo li{margin-bottom:10px}.pm-memo li .pm-acts{margin-top:6px}
+.pm-memo .t,.pm-sig .t{font-weight:500;color:var(--paper)}.pm-memo .e{color:var(--fog);font-size:12px;margin-top:2px}
+.pm-log{background:var(--carbon);border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-bottom:6px;color:var(--mist);font-size:12px}
+.pm-lc{overflow-x:auto;background:var(--carbon);border:1px solid var(--line);border-radius:10px;padding:4px 10px;margin-bottom:8px}
+.pm-prio{border-collapse:collapse;width:100%;min-width:720px;font-size:12px}
+.pm-prio th{color:var(--fog);font-weight:500;text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+.pm-prio td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle}.pm-prio tr:last-child td{border-bottom:0}
+.pm-prio tr.gone td{opacity:.5}.pm-prio .mono{font:12px var(--mono)}.pm-prio .e{color:var(--fog)}
+.pm-mv{font:11px var(--mono)}.pm-mv.up{color:var(--green)}.pm-mv.dn{color:var(--red)}
+.pm-row a{color:var(--mist)}.pm-why{color:var(--fog);font-size:12px;margin-bottom:8px}
+.pm-chips{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px}.pm-chk{display:inline-flex;gap:4px;align-items:baseline;font-size:12px;min-width:0;overflow-wrap:anywhere}
+.pm-chk .e{color:var(--fog)}.pm-y{color:var(--green)}.pm-n{color:var(--red)}.pm-w{color:var(--orange)}
+.pm-rm .pm-lc{flex-basis:100%;min-width:0;margin:0}.pm-rm-err{color:var(--red);font-size:12px;margin-top:2px}
+.pm-life{min-width:980px}.pm-life td:first-child{min-width:220px}.pm-life .t{color:var(--paper);font-weight:500}.pm-life td.n{color:var(--red)}.pm-life td.mono{white-space:nowrap}
+.pm-st{width:14px;height:14px;border-radius:50%;display:inline-block;border:1px solid var(--smoke)}
+.pm-st.ok{background:var(--green);border-color:var(--green)}.pm-st.now{background:var(--lime);border-color:var(--lime)}.pm-st.stuck{background:var(--red);border-color:var(--red)}.pm-st.skip{border-style:dashed}
+/* --- End Product manager View --- */
 
 /* --- Develop queue View --- */
  :is(.dq,.dq-panel){box-sizing:border-box}
@@ -1412,7 +1488,10 @@ function sortProjects(list){
   const rank=p=>{if(p.kind==="run")return 9;if(openLevers("all").some(l=>l.project===p.id))return 0;return {offTrack:1,atRisk:2,onTrack:3,stale:4}[stats(p).health]};
   return [...list].sort((a,b)=>rank(a)-rank(b)||(a.prio||9)-(b.prio||9));
 }
-const projOrder=prod=>{const ps=sortProjects(DATA.projects.filter(p=>p.product===prod));return [...ps.filter(p=>!isQuiet(p)),...ps.filter(isQuiet)]};
+let showClosed=false;
+const closedN=prod=>DATA.projects.filter(p=>p.closedAt&&(prod==='all'||p.product===prod)).length;
+const closedToggle=prod=>closedN(prod)?`<button class="linkbtn" data-show-closed>${showClosed?"Hide":"Show"} closed (${closedN(prod)})</button>`:"";
+const projOrder=prod=>{const ps=sortProjects(DATA.projects.filter(p=>(prod==='all'||p.product===prod)&&(showClosed||!p.closedAt)));return [...ps.filter(p=>!isQuiet(p)),...ps.filter(isQuiet)]};
 
 /* ---------- Linear-style atoms ---------- */
 const HL={onTrack:["On track","var(--green)"],atRisk:["At risk","var(--orange)"],offTrack:["Off track","var(--red)"],stale:["No update","var(--ash)"]};
@@ -1510,8 +1589,8 @@ function card(p){
     body+=`<div class="card-meta"><span>${esc(p.metric)}</span><span class="sep"></span><span>${p.exps.length-1} runs · ${s.kept} kept</span><button class="linkbtn" data-loop="${p.id}">${ex?"Compact":"Show chart"}</button></div>`}
   else body=cycleGraph(p,false);
   const right=p.kind==="build"?`${pie(s.pct)}${s.pct}%`:p.kind==="loop"?`<span style="color:var(--paper)">${fmtV(s.best,p.unit)}</span><span class="ash">/ ${fmtV(p.target,p.unit)}</span>`:`${s.open} open`;
-  return `<article class="card" data-open="${p.id}" tabindex="0" aria-label="Open ${esc(p.name)}">
-   <div class="card-h">${kindIcon(p.kind)}<span class="nm">${esc(p.name)}</span>${leverCount(p)}<span class="right">${right}</span></div>
+  return `<article class="card${p.closedAt?" closed":""}" data-open="${p.id}" tabindex="0" aria-label="Open ${esc(p.name)}">
+   <div class="card-h">${kindIcon(p.kind)}<span class="nm">${esc(p.name)}</span>${p.closedAt?`<span class="pm-closed" title="${esc(p.closeNote||"")}">closed ${md(new Date(p.closedAt))}</span>`:""}${leverCount(p)}<span class="right">${right}</span></div>
    ${body}
    <div class="card-meta">${health(s.health)}<span class="sep"></span><span class="mono">${p.kind==="build"?targetOf(p,s)+(s.slip>0?` · <span style="color:var(--orange)">predicted ${md(s.predicted)}</span>`:""):p.kind==="run"?targetOf(p,s):esc(p.feat)}</span>${chips(p)?`<span class="sep"></span>${chips(p)}`:""}</div>
    ${s.last?`<div class="upd"><span class="mono">${esc(s.last[1])}</span><span class="txt">${esc(s.last[3])}</span><span class="mono ash">${ago(s.last[0])}</span></div>`:""}</article>`;
@@ -1604,10 +1683,10 @@ function inbox(prod,withNext=true){
   return `<section class="inbox"><div class="panel"><div class="panel-h"><h2>Inbox <span class="ct">${n}</span></h2><span class="hint" style="margin-left:auto"><span class="kbd">j</span><span class="kbd">k</span> move <span class="kbd">1–4</span> pick <span class="kbd">${/Mac|iPhone|iPad/.test(navigator.platform)?"⌘↵":"Ctrl ↵"}</span> save</span></div>
    ${list.length?list.map(leverRow).join(""):`<p class="empty">Nothing waits on you. Agents add questions with <span class="mono">factory ask</span>.</p>`}
    <div class="sum"><span><i class="dot d-running" style="display:inline-block"></i> ${c("running")} running · ${c("waiting")} paused for you · <span style="color:var(--red)">${c("failed")} failed</span> · <span style="color:var(--orange)">${c("quota")} quota</span></span><span>${fmtTok(sumTok(ag))} Claude tokens, ${DATA.tokens.window} · <a href="#/${prod}/agents" style="text-decoration:underline;text-underline-offset:3px">Agents</a></span></div></div>
-   ${withNext?`<div class="panel" style="margin-top:12px"><div class="panel-h"><h2>Next, without you</h2></div><ol class="next">${sortProjects(DATA.projects.filter(p=>prod==="all"||p.product===prod)).filter(p=>!isQuiet(p)&&p.next.length).slice(0,4).map(p=>`<li>${esc(p.next[0])}</li>`).join("")||`<li class="fog">No next step posted.</li>`}</ol></div>`:""}</section>`;
+   ${withNext?`<div class="panel" style="margin-top:12px"><div class="panel-h"><h2>Next, without you</h2></div><ol class="next">${sortProjects(DATA.projects.filter(p=>prod==="all"||p.product===prod)).filter(p=>!p.closedAt&&!isQuiet(p)&&p.next.length).slice(0,4).map(p=>`<li>${esc(p.next[0])}</li>`).join("")||`<li class="fog">No next step posted.</li>`}</ol></div>`:""}</section>`;
 }
 function statusLine(keys){
-  const sum=k=>{const ps=DATA.projects.filter(p=>p.product===k),h=ps.map(p=>stats(p).health),w=openLevers(k).length;
+  const sum=k=>{const ps=DATA.projects.filter(p=>p.product===k&&!p.closedAt),h=ps.map(p=>stats(p).health),w=openLevers(k).length;
     const parts=[["offTrack","off track"],["atRisk","at risk"],["onTrack","on track"],["stale","no update"]].map(([v,l])=>[h.filter(x=>x===v).length,l]).filter(([c])=>c).map(([c,l])=>c+" "+l);
     return `<span style="display:block"><b>${esc(DATA.products[k].name)}:</b> <b style="color:${w?"var(--paper)":"var(--fog)"}">${w} waiting on you</b> · ${ps.length} project${ps.length>1?"s":""}: ${parts.join(", ")}.</span>`};
   return `${ageMin>15?`<div class="banner warn">Data is ${ageMin} min old. The build has not run since ${hm(DATA.builtAt)} UTC; run <span class="mono">factory build</span>, or <span class="mono">factory doctor</span> to see which source fails.</div>`:""}${signedOut?`<div class="banner stop">Signed out: your Cloudflare login expired, so answers cannot be saved. Reload the page to sign in again.</div>`:""}
@@ -1618,12 +1697,12 @@ function statusLine(keys){
 function viewHome(prod){
   if(!expandedLoops){expandedLoops=new Set();Object.keys(DATA.products).forEach(k=>{const l=DATA.projects.filter(p=>p.product===k&&p.kind==="loop"&&!isQuiet(p)).sort((a,b)=>(b.lastActive||"").localeCompare(a.lastActive||""))[0];if(l)expandedLoops.add(l.id)})}
   const ps=projOrder(prod),live=ps.filter(p=>!isQuiet(p)),quiet=ps.filter(isQuiet);
-  return statusLine([prod])+`<div class="home">${inbox(prod)}<section><div class="section-h"><h2 style="margin:0">Projects <span class="ct">${ps.length}</span></h2><span class="fog">Sorted by what needs you</span></div>
+  return statusLine([prod])+`<div class="home">${inbox(prod)}<section><div class="section-h"><h2 style="margin:0">Projects <span class="ct">${ps.length}</span></h2><span class="fog">Sorted by what needs you ${closedToggle(prod)}</span></div>
    <div class="cards">${live.map(card).join("")}</div>
    ${quiet.length?`<details style="margin-top:12px"><summary class="fog" style="cursor:pointer;font-size:13px;padding:6px 2px">Quiet · ${quiet.length} with no agent and no update for 3 days</summary><div class="cards" style="margin-top:10px">${quiet.map(card).join("")}</div></details>`:""}</section></div>`;
 }
 function viewAll(){
-  return statusLine(Object.keys(DATA.products))+`<div class="home">${inbox("all",false)}<section>${Object.entries(DATA.products).map(([k,pr])=>{
+  return statusLine(Object.keys(DATA.products))+`<div class="home">${inbox("all",false)}<section>${closedN("all")?`<div class="section-h"><span class="fog" style="margin-left:auto">${closedToggle("all")}</span></div>`:""}${Object.entries(DATA.products).map(([k,pr])=>{
     const ps=projOrder(k),ag=DATA.agents.filter(a=>a.product===k);
     return `<div class="grp-h"><h2><a href="#/${k}">${esc(pr.name)}</a></h2><span class="fog" style="font-size:12px">${openLevers(k).length} waiting · ${ag.filter(a=>a.state==="running").length} running · ${fmtTok(sumTok(ag))} Claude tokens</span></div>
      <div class="list">${ps.map(p=>{const s=stats(p),pc=p.kind==="loop"?s.pct:s.pct;
@@ -2354,12 +2433,67 @@ function viewAutomation(prod){
     </div>`;
   }
   const seg=`<nav class="seg" role="tablist" aria-label="Automation sections" style="margin:12px 0 6px">
+    <button type="button" data-autotab="releases" aria-selected="${autoTab==='releases'}">Releases</button>
     <button type="button" data-autotab="develop-queue" aria-selected="${autoTab==='develop-queue'}">Develop queue</button>
     <button type="button" data-autotab="release-comms" aria-selected="${autoTab==='release-comms'}">Release comms</button>
     <button type="button" data-autotab="board" aria-selected="${autoTab==='board'}">Board</button>
     <button type="button" data-autotab="autopilot" aria-selected="${autoTab==='autopilot'}">Autopilot</button>
+    <button type="button" data-autotab="supervisor" aria-selected="${autoTab==='supervisor'}">Supervisor</button>
   </nav>`;
-  return digestRow + seg + (autoTab==='develop-queue' ? '<div class="dq">'+viewDevelopQueue(prod)+'</div>' : autoTab==='release-comms' ? '<div class="rc">'+viewReleaseComms(prod)+'</div>' : autoTab==='board' ? viewBoard(prod) : viewAutopilotTab(prod));
+  return digestRow + seg + (autoTab==='releases' ? '<div class="rl">'+viewReleases()+'</div>' : autoTab==='develop-queue' ? '<div class="dq">'+viewDevelopQueue(prod)+'</div>' : autoTab==='release-comms' ? '<div class="rc">'+viewReleaseComms(prod)+'</div>' : autoTab==='board' ? viewBoard(prod) : autoTab==='supervisor' ? viewSupervisorTab() : viewAutopilotTab(prod));
+}
+
+/* --- Supervisor (Automation) View --- */
+const SV_HEALTH={onTrack:["on track","var(--green)"],atRisk:["at risk","var(--orange)"],offTrack:["off track","var(--red)"]};
+const SV_SEV={crit:"var(--red)",warn:"var(--orange)"};
+const SV_STATUS={escalated:"escalated",resolved:"resolved",muted:"muted",false_alarm:"false alarm"};
+const svOpen=new Set();
+const svBar=(pct,warn,crit)=>{pct=Number(pct);const c=pct>=crit?"var(--red)":pct>=warn?"var(--orange)":"var(--green)";return `<div class="bar" style="min-width:90px;flex:0 0 120px"><i style="width:${Math.min(100,pct)}%;background:${c}"></i></div><span style="color:${c}" class="mono">${pct}%</span>`};
+const svWhen=t=>typeof t==="string"&&t?(t.slice(0,10)===new Date().toISOString().slice(0,10)?hm(t):t.slice(5,10)+" "+hm(t))+" UTC":"-";
+
+function svCard(f){
+  const open=svOpen.has(f.signature),active=["open","escalated"].includes(f.status);
+  // a closed card says what happened to it; an escalated one names its inbox item; an open one what this run did
+  const badge=f.status==="open"?(f.did||"quiet"):SV_STATUS[f.status]+(f.status==="escalated"&&f.lastResult?" · "+f.lastResult:"");
+  const budget=f.budget&&f.status==="open"?`${f.used} of ${f.budget} in 24 h`:"";  // an escalated finding sends nothing more until it clears
+  const sig=esc(f.signature),shSig=esc(/^[\w:.@\/-]+$/.test(f.signature)?f.signature:"'"+String(f.signature).replace(/'/g,"'\\''")+"'");
+  const detail=open?`<div class="sv-detail">
+    <div class="fog">Status <b>${esc(SV_STATUS[f.status]||f.status)}</b> · action <span class="mono">${esc(f.action)}</span>${budget?" · budget "+esc(budget)+(f.used>=f.budget&&f.action==="dispatch"?" (used: the next miss escalates once)":""):""} · check <span class="mono">${esc(f.check)}</span> · first seen ${esc(svWhen(f.first_seen))}</div>
+    <div class="fog">Signature <span class="mono">${sig}</span></div>
+    <pre class="mono">factory supervise mute ${shSig} --hours 24
+factory supervise false-alarm ${shSig}</pre></div>`:"";
+  return `<div class="box sv-card${active?"":" done"}" data-sv-card="${sig}" role="button" tabindex="0" aria-expanded="${open}">
+    <span class="mono fog" style="font-size:12px">${esc(svWhen(f.last_seen))}</span>
+    <div style="min-width:0"><div style="font-weight:510;color:${active?SV_SEV[f.severity]||"var(--mist)":"var(--mist)"}">${esc(f.title)}</div><div class="fog" style="font-size:13px;margin-top:2px">${esc(f.evidence)}</div></div>
+    <div class="sv-side"><span class="badge">${esc(badge)}</span>${budget?`<div class="fog" style="font-size:12px;margin-top:4px">${esc(budget)}</div>`:""}</div>${detail}</div>`;
+}
+
+function viewSupervisorTab(){
+  const sv=DATA.supervisor||{};
+  const stop=(t,b)=>`<div class="banner stop" role="status" style="margin:16px 0"><div style="display:flex;align-items:center;gap:8px;font-weight:510;color:var(--paper);margin-bottom:4px"><i class="dot d-failed"></i>${t}</div><p class="fog" style="font-size:13px;margin:0">${b}</p></div>`;
+  if(sv.error)return stop("Could not read the supervisor",`Fix or restore <span class="mono">supervisor.json</span> in the factory home. <span class="mono">${esc(sv.error)}</span>`);
+  if(!sv.lastRun)return stop("The supervisor has not run yet",`Install the cron line from <span class="mono">deploy/crontab.txt</span>.`);
+  const dot={alive:"d-running",late:"d-quota",degraded:"d-quota",dead:"d-failed"}[sv.status]||"d-unknown";
+  const ago_=sv.minutes!=null?` (${sv.minutes} min ago)`:"";
+  const next=["alive","degraded"].includes(sv.status)?`<span class="fog">next <b style="color:var(--paper);font-weight:510">${hm(new Date(Date.parse(sv.lastRun)+30*6e4).toISOString())} UTC</b></span>`:`<span style="color:var(--orange)">overdue</span>`;
+  const banner=sv.status==="dead"?stop("Supervisor is dead",`It has not run for ${sv.minutes!=null?sv.minutes+" min":"over an hour"}. Nothing is watching the factory and everything below is stale. Check the cron line and the supervise log.`)
+    :sv.status==="late"?`<div class="banner warn" role="status" style="margin:16px 0">Supervisor is late: last run ${esc(sv.minutes)} min ago, expected every 30 min. It is declared dead at 60 min. Check the cron line.</div>`
+    :sv.status==="degraded"?`<div class="banner warn" role="status" style="margin:16px 0">Supervisor is degraded: an action has failed 3 runs in a row, so a finding is not reaching anyone. See <span class="mono">factory supervise list</span>.</div>`:"";
+  const head=`<div class="box" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:16px 0 16px"><span style="display:flex;align-items:center;gap:6px;font-weight:510;color:var(--paper)"><i class="dot ${dot}"></i>${esc(String(sv.status).toUpperCase())}</span>
+    <span class="fog">last run <b style="color:var(--paper);font-weight:510">${hm(sv.lastRun)} UTC</b>${ago_}</span>${next}
+    <span style="margin-left:auto" class="badge">${sv.live?"Live: actions are sent":"Dry run: nothing is sent, shows 'would do'"}</span>
+    ${sv.live?"":`<span class="fog" style="font-size:12px;flex-basis:100%">Turn it on with <span class="mono">factory config set supervisor.live true</span></span>`}</div>`;
+  const fs=sv.findings||[],nOpen=fs.filter(f=>["open","escalated"].includes(f.status)).length;
+  const caught=`<h2>Caught today <span class="badge">${nOpen} open</span> <span class="badge">${fs.length} total</span></h2>`+(fs.length?fs.map(svCard).join(""):`<div class="box" style="text-align:center;padding:36px 16px"><b style="color:var(--green)">All clear.</b><div class="fog" style="margin-top:4px">Plans match facts, every job on time.</div></div>`);
+  const sn=sv.snapshot;
+  if(!sn)return banner+head+caught+`<div class="fog" style="font-size:12px">No facts snapshot yet: it appears after the next run.</div>`;
+  const asOf=sn.at?` <span class="fog" style="font-size:12px;font-weight:400">as of ${esc(svWhen(sn.at))}</span>`:"";
+  const jobs=(sn.jobs||[]).length?`<h2>Job heartbeats${asOf}</h2><div class="box" style="padding:0;overflow:auto"><table class="tbl"><thead><tr><th>Job</th><th>Max age</th><th>Last write</th><th>Status</th></tr></thead><tbody>${sn.jobs.map(j=>`<tr><td class="mono">${esc(j.name)}</td><td>${esc(j.max_min)} min</td><td>${j.last?esc(svWhen(j.last))+" ("+ago(j.last)+" ago)":"never"}</td><td style="color:${j.stale?"var(--orange)":"var(--green)"}"><b>${j.stale?"late":"ok"}</b></td></tr>`).join("")}</tbody></table></div>`:"";
+  const health=(sn.health||[]).length?`<h2>Project health: self-reported vs computed from facts${asOf}</h2><div class="box" style="padding:0;overflow:auto"><table class="tbl"><thead><tr><th>Project</th><th>Agent says</th><th>Facts say</th><th>Why</th></tr></thead><tbody>${sn.health.map(r=>{const d=r.reported!==r.computed,c=SV_HEALTH[r.computed]||[r.computed,"var(--fog)"];return `<tr${d?' style="background:rgba(235,87,87,.08)"':""}><td class="mono">${esc(r.project)}</td><td>${esc((SV_HEALTH[r.reported]||[r.reported])[0])}</td><td><b style="color:${c[1]}">${esc(c[0])}</b>${d?' <span class="badge" style="color:var(--red)">disagree</span>':""}</td><td class="fog">${esc(r.why)}</td></tr>`}).join("")}</tbody></table></div>`:"";
+  const v=sn.vps||{},th=v.thresholds||{};
+  const row=(n,pct,w,c)=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0"><span style="width:90px">${n}</span>${pct==null?'<span class="fog">unknown</span>':svBar(pct,w,c)}</div>`;
+  const vps=`<h2>VPS${asOf}</h2><div class="box">${row("Disk /",v.disk_pct,th.disk_warn,th.disk_crit)}${row("Memory",v.mem_pct,th.mem_warn,101)}<div class="fog" style="font-size:12px;margin-top:6px">Services, TLS, backups and worktrees arrive with the infra agent.</div></div>`;
+  return banner+head+caught+jobs+health+vps;
 }
 
 function viewAutopilotTab(prod){
@@ -4000,10 +4134,70 @@ function viewReleaseComms(prod){
 }
 /* --- End Release Comms View --- */
 
+/* --- Releases (Automation) View --- */
+let releaseLoaded=false,releaseLoading=false,releaseError=null,releaseBusy=false,releaseTimer=null,releaseSeq=0;
+const REL_VERDICT={"ship-all":["Ship all","ok"],"cherry-pick":["Cherry-pick","warn"],"solo-red":["Solo red","bad"],wait:["Wait","idle"]};
+const REL_SCORE={green:"var(--green)",yellow:"var(--orange)",red:"var(--red)"};
+function relRender(){if(route.view==="automation"&&autoTab==="releases")render();}
+function loadReleaseFromServer(){
+  releaseLoaded=true;if(releaseBusy)return;
+  const seq=++releaseSeq;releaseLoading=!DATA.release;releaseError=null;relRender();
+  fetch("api/release"+Q).then(r=>r.json().catch(()=>({})).then(b=>{if(!r.ok)throw new Error(b.error||("HTTP "+r.status));return b;}))
+    .then(b=>{if(seq!==releaseSeq)return;DATA.release=b;releaseLoading=false;relRender();})
+    .catch(err=>{if(seq!==releaseSeq)return;releaseLoading=false;if(DATA.release){toast("Could not refresh releases: "+(err.message||"error"));return}releaseError=err.message||"Failed to load releases";relRender();});
+}
+// refresh while the tab is open: holds expire and the daily run pauses products on its own
+function releaseTick(){clearInterval(releaseTimer);releaseTimer=setInterval(()=>{if(route.view==="automation"&&autoTab==="releases"&&!releaseBusy&&!document.hidden)loadReleaseFromServer();},60000);}
+function releasePost(action,product){
+  if(releaseBusy)return;
+  const p=product!=="*"&&DATA.release&&DATA.release.products[product];
+  if(action==="resume"&&product==="*"&&!confirm("Resume releases for every product?"))return;
+  if(action==="resume"&&p&&p.lastEvent==="rollback-failed"&&!confirm(`${p.name}: the last rollback failed. Resume releases anyway?`))return;
+  if(action==="unhold"&&!confirm(`Lift the rollback hold on ${p?p.name:product}?`))return;
+  releaseBusy=true;releaseSeq++;render();  // the bump drops any GET reply already in flight
+  fetch("api/release"+Q,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,product}),signal:AbortSignal.timeout?AbortSignal.timeout(15000):undefined})
+    .then(r=>r.json().catch(()=>({})).then(b=>{if(!r.ok)throw new Error(b.error||("HTTP "+r.status));DATA.release=b;releaseBusy=false;render();toast(action==="unhold"?"Hold lifted":action==="pause"?"Paused":"Resumed");}))
+    .catch(err=>{releaseBusy=false;toast(err.name==="TimeoutError"?"No answer in 15 s: reloading the real state":"Not saved: "+err.message);loadReleaseFromServer();});
+}
+function relWhen(at){return at?`${esc(String(at).slice(5,10))} ${hm(at)}`:"";}
+function relCard(name,p,gp){
+  const v=p.verdict,hold=p.hold,paused=p.paused||gp;
+  const pill=paused?["Paused","warn"]:p.error?["Read error","bad"]:hold?["On hold","warn"]:v&&v.verdict?(REL_VERDICT[v.verdict]||[v.verdict,"idle"]):["No verdict yet","idle"];
+  const reasons=!p.error&&v?(v.reasons||[]):[];
+  const ship=v&&v.ship&&v.ship.length?`<li>Ships ${v.ship.map(n=>"#"+esc(n)).join(", ")}</li>`:"";
+  const held=v&&v.held?v.held.map(h=>`<li class="fog">Held #${esc(h.number)}: ${esc(h.reason)}</li>`).join(""):"";
+  const holdBox=hold?`<div class="rl-box"><div class="row2"><b style="color:var(--orange)">Rollback hold</b><span class="mono fog">${hold.remaining_hours>0?esc(hold.remaining_hours)+"h until it can be lifted":"24h passed"}</span></div>
+    <div>${esc(hold.issue||"no note")} ${hold.since?`<span class="fog mono">since ${relWhen(hold.since)} UTC</span>`:""}</div>
+    <div><button class="btn sm" type="button" data-rl-unhold="${esc(name)}" ${releaseBusy?"disabled ":""}${hold.remaining_hours>0?'disabled title="The CLI refuses an unhold before 24h"':""}>Unhold</button></div></div>`:"";
+  const errBox=p.error?`<div class="rl-box err"><b style="color:var(--red)">GitHub read error</b><div class="mono">${esc(p.error)}</div></div>`:"";
+  const evs=(p.journal||[]).slice(-3).reverse().map(e=>`<div class="rl-ev"><span class="mono ash">${relWhen(e.at)}</span><span class="ev ${esc(e.event)}">${esc(e.event||"?")}</span>${e.sha?`<span class="mono fog">${esc(String(e.sha).slice(0,7))}</span>`:""}${(e.prs||[]).length?`<span class="fog">${e.prs.map(n=>"#"+esc(n)).join(" ")}</span>`:""}${e.note?`<span class="fog">${esc(e.note)}</span>`:""}</div>`).join("")||`<div class="fog" style="font-size:12px">No events yet.</div>`;
+  const busy=releaseBusy?" disabled":"";
+  const btn=gp?`<button class="btn sm" type="button" disabled title="Resume all first">Paused (all)</button>`:`<button class="btn sm${p.paused?" danger":""}" type="button"${busy} data-rl-${p.paused?"resume":"pause"}="${esc(name)}">${p.paused?"Resume":"Pause"}</button>`;
+  return `<div class="rl-card${paused?" paused":""}${p.error?" err":""}${hold?" hold":""}" data-rl-card="${esc(name)}">
+    <div class="rl-head"><div><div class="rl-name">${esc(p.name)} <span class="rl-mode ${esc(p.mode)}">${esc(p.mode||"?")}</span></div><div class="rl-repo">${esc(p.repo||"")}</div></div>${btn}</div>
+    <div class="rl-verdict"><span class="rl-pill ${pill[1]}">${v&&REL_SCORE[v.score]?`<i title="release risk: ${esc(v.score)}" style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:${REL_SCORE[v.score]}"></i>`:""}${esc(pill[0])}</span><ul class="rl-list">${reasons.map(r=>`<li>${esc(r)}</li>`).join("")}${ship}${held}</ul></div>
+    ${holdBox}${errBox}${v&&v.relayError?`<div class="rl-box err"><b style="color:var(--red)">Could not reach the release thread</b><div class="mono">${esc(v.relayError)}</div></div>`:""}${p.inFlightSince?`<div class="fog" style="font-size:12px">Release in flight since ${relWhen(p.inFlightSince)} UTC</div>`:""}
+    <div><div class="rl-sec">Last events (UTC)</div>${evs}</div>
+    <div class="rl-foot"><span class="mono">${esc(p.flow_label||"")}</span><span>${v&&v.at?"evaluated "+hm(v.at)+" UTC":""}</span></div></div>`;
+}
+function viewReleases(){
+  if(releaseLoading)return `<div class="rl-grid">${[1,2,3].map(()=>`<div class="skel-box" style="margin:0"><div class="skel-bar" style="height:16px;width:40%"></div><div class="skel-bar" style="height:70px;margin-top:14px"></div></div>`).join("")}</div>`;
+  if(releaseError)return `<div class="rl-state" id="rl-error"><h3>Failed to load releases</h3><p>${esc(releaseError)}</p><button class="btn" type="button" data-rl-retry>Retry</button></div>`;
+  const d=DATA.release||{},names=Object.keys(d.products||{}).sort();
+  if(!names.length)return `<div class="rl-state"><h3>No products configured</h3><p>Add one with <code>factory release product add</code>.</p></div>`;
+  const gp=!!d.paused,ps=d.products;
+  const ship=names.filter(n=>!ps[n].paused&&!gp&&ps[n].verdict&&["ship-all","cherry-pick","solo-red"].includes(ps[n].verdict.verdict)).length;
+  return `<div>${gp?`<div class="rl-banner"><b>All releases are paused.</b> Verdicts are still computed; nothing is cut, merged or deployed.</div>`:""}
+    <div class="rl-bar"><span class="rl-sum">${names.length} product${names.length===1?"":"s"} · ${ship} releasing today · ${gp?names.length:names.filter(n=>ps[n].paused).length} paused</span>
+    <button class="btn${gp?" danger":""}" type="button"${releaseBusy?" disabled":""} data-rl-${gp?"resume":"pause"}="*">${gp?"Resume all":"Pause all"}</button></div>
+    <div class="rl-grid">${names.map(n=>relCard(n,ps[n],gp)).join("")}</div>${(d.journal||[]).length?`<div class="rl-card" style="margin-top:16px"><div class="rl-sec">Release journal: last ${d.journal.length} events across products (UTC)</div>${d.journal.slice().reverse().map(e=>`<div class="rl-ev"><span class="mono ash">${relWhen(e.at)}</span><b style="font-size:12px">${esc((ps[e.product]||{}).name||e.product||"")}</b><span class="ev ${esc(e.event)}">${esc(e.event||"?")}</span>${e.sha?`<span class="mono fog">${esc(String(e.sha).slice(0,7))}</span>`:""}${(e.prs||[]).length?`<span class="fog">${e.prs.map(n=>"#"+esc(n)).join(" ")}</span>`:""}</div>`).join("")}</div>`:""}</div>`;
+}
+/* --- End Releases View --- */
+
 /* --- Board (Automation) View --- */
 const BOARD_COLS=[["intake","Intake"],["triage","Triage"],["building","Building"],["review","Review"],["waiting","Waiting on you"],["merged","Merged"]];
 const BOARD_SOURCE={sentry:"Sentry",signoz:"SigNoz",bug:"Bug report",support:"Support",manual:"Manual"};
-let autoTab="board";
+let autoTab="releases";
 let boardFilters={product:"all",source:"all",stuck:false,pill:"all"};
 let openBoardCard=null;
 let boardLoaded=false;
@@ -4013,7 +4207,7 @@ function loadBoardFromServer(){
     .then(r=>r.json().catch(()=>({})).then(b=>({ok:r.ok,b})))
     .then(({ok,b})=>{
       if(!ok||!b||!Array.isArray(b.cards))return;  // fall back to DATA.board
-      DATA.board={...(DATA.board||{}),cards:b.cards,fetchedAt:b.fetchedAt,error:b.error,repoErrors:b.repoErrors,auto_promote:b.auto_promote};
+      DATA.board={...(DATA.board||{}),cards:b.cards,fetchedAt:b.fetchedAt,error:b.error,repoErrors:b.repoErrors,auto_promote:b.auto_promote,max_per_day:b.max_per_day};
       if(route.view==="automation"&&autoTab==="board")render();
     })
     .catch(()=>{});
@@ -4046,14 +4240,15 @@ function viewBoard(prod){
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <input type="checkbox" class="toggle" ${b.auto_promote?"checked":""} aria-label="Auto-promote" data-bautopromote>
       <span style="font-size:13px;color:var(--paper);font-weight:510">Auto-promote</span>
-      <span class="fog" style="font-size:12px">${b.auto_promote?"On: money, auth, infra and support wait for you. Read by the triage agent.":"Off: every intake issue waits for you."}</span>
+      <span class="fog" style="font-size:12px">${b.auto_promote?"On: every intake bug is triaged and promoted, money and support included. You get only outliers.":"Off: every intake issue waits for you."}</span>
       <button class="linkbtn" type="button" style="margin-left:auto" aria-expanded="false" data-brules>Rules</button>
     </div>
     <ul id="boardRules" hidden class="fog" style="font-size:12px;line-height:1.6;margin:8px 0 0 18px;padding:0">
-      <li>Source is Sentry sweep or bug report. Support tickets always wait for you.</li>
-      <li>Triage found the cause: a stack trace or repro steps pointing at repo code.</li>
-      <li>Fix touches 3 files or fewer, none in payments, payouts, wallet, billing, auth, Prisma schema, infra, CI or secrets.</li>
-      <li>At most 5 per day across all repos. You still merge every PR.</li>
+      <li>All sources: Sentry, SigNoz, bug reports, support tickets.</li>
+      <li>Promoted when triage finds the cause (stack trace, repro, or code it can point to).</li>
+      <li>Payments, payouts, wallet, billing, auth, schema, infra: promoted too, with a money-path review on the PR.</li>
+      <li>Asks you only when: no cause found, a product decision is needed, it would delete user data or rotate secrets, or it needs CI, Docker, env or lock-file changes.</li>
+      <li>Up to ${esc(String(b.max_per_day??3))} per day (the lane's build capacity); the rest wait in order. You still merge every PR.</li>
     </ul>
   </div>`;
   const colsHTML=b.cards.length?`<div class="board-wrap"><div class="board-grid">${BOARD_COLS.map(([id,name])=>{
@@ -4654,8 +4849,289 @@ function roadMenu(id, btn){
   };
 }
 /* ---------- shell ---------- */
+
+/* --- Product manager View --- */
+let pmSeq=0,pmLoaded=false,pmLoading=false,pmError=null,pmFilter=null,pmHandled={};
+const pmBusy=new Set();
+const PM_GROUPS=[
+ ["finished","var(--green)","Finished, still open",()=>"Every phase has all its units merged. Closing takes the project off the page's lists."],
+ ["proto","var(--red)","Validated prototype, not marked built",()=>"You validated a prototype and the project is done, but it is not marked built. Check the screen shipped."],
+ ["quiet","var(--iris)","Gone quiet",q=>`No update, plan change or result for more than ${q} days.`],
+ ["late","var(--lime)","Behind its date",()=>"A phase is past its due date with units still to merge."]];
+const pmRows=()=>(DATA.pm&&DATA.pm.findings)||[];
+const pmOpen=()=>pmRows().filter(f=>!pmHandled[f.id]);
+const pmCount=()=>DATA.pm&&DATA.pm.findings?pmOpen().length:((DATA.pm&&DATA.pm.total)||0);
+function pmFetch(url,opt){
+  return fetch(url+Q,opt).then(r=>r.ok?r.json():r.json().catch(()=>({})).then(b=>{throw Object.assign(new Error(b.error||("HTTP "+r.status)),{body:b})}));
+}
+const pmPost=body=>pmFetch("api/pm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+function loadPmFromServer(){
+  pmLoading=true;pmError=null;pmHandled={};
+  if(route.view==="pm")render();
+  const n=++pmSeq;
+  pmFetch("api/pm").then(b=>{if(n!==pmSeq)return;DATA.pm=b;pmLoading=false;if(route.view==="pm")render()})
+    .catch(e=>{pmLoading=false;pmError=e.message;if(route.view==="pm")render()});
+}
+function pmDo(id,i){
+  const f=pmRows().find(x=>x.id===id),a=f&&f.actions[i];
+  if(!a||pmBusy.has(id))return Promise.resolve();
+  pmBusy.add(id);render();
+  const body={action:a.action,project:f.project};
+  if(a.action==="snooze")body.days=a.days;
+  if(a.action==="proto-built")body.proto=a.proto;
+  return pmPost(body).then(r=>{
+    pmBusy.delete(id);
+    if(a.action==="nudge"&&!r.delivered)throw new Error("Not sent: "+(r.result||"the agent session could not be reached"));
+    const undo=a.action==="close"?{action:"reopen",project:f.project}:a.action==="snooze"?{action:"snooze",project:f.project,days:0}:null;
+    const msg={close:"Closed",snooze:a.label==="Keep open"?`Kept open ${a.days} days`:`Snoozed ${a.days} days`,nudge:"Agent nudged","proto-built":"Marked built"}[a.action];
+    if(a.action==="close"&&proj(f.project))proj(f.project).closedAt=new Date().toISOString();  // the lists follow now, not at the next build
+    pmHandled[id]={msg,undo};render();toast(msg);
+  }).catch(e=>{pmBusy.delete(id);render();toast(e.message,false,true)});
+}
+function pmUndo(id){
+  const h=pmHandled[id];if(!h||!h.undo||pmBusy.has(id))return;
+  pmBusy.add(id);render();
+  pmPost(h.undo).then(()=>{pmBusy.delete(id);delete pmHandled[id];const pr=proj(pmRows().find(x=>x.id===id).project);if(pr&&h.undo.action==="reopen")delete pr.closedAt;render();toast("Undone")})
+    .catch(e=>{pmBusy.delete(id);render();toast(e.message,false,true)});
+}
+function pmCloseAll(){
+  pmOpen().filter(f=>f.group==="finished").reduce((p,f)=>p.then(()=>pmDo(f.id,f.actions.findIndex(a=>a.action==="close"))),Promise.resolve());
+}
+function pmRow(f){
+  const h=pmHandled[f.id],busy=pmBusy.has(f.id);
+  const acts=h?`<span class="pm-done">✓ ${esc(h.msg)}</span>${h.undo?`<button class="btn" type="button" data-pm-undo="${esc(f.id)}" ${busy?"disabled":""}>Undo</button>`:""}`
+    :f.actions.map((a,i)=>a.action==="open-proto"
+      ?`<button class="btn" type="button" data-pm-proto="${esc(a.proto)}" data-v="${a.v}">${esc(a.label)}</button>`
+      :`<button class="btn${i===0?" primary":""}" type="button" data-pm-act="${esc(f.id)}" data-i="${i}" ${busy||a.disabled?"disabled":""} ${a.disabled?`title="${esc(a.disabled)}"`:""}>${esc(a.label)}</button>`).join("");
+  return `<div class="pm-row${h?" gone":""}"><div class="main"><div class="t">${esc(f.title)}</div><div class="e"><span class="pm-tag">${esc(f.project)}</span>${esc(f.evidence)}</div></div><div class="pm-acts">${acts}</div></div>`;
+}
+/* phase 2: Today, Roadmap priority and Signals. Their actions post, note the row, then re-read the proposal. */
+let pmTab="brief";
+const PM_TABS=[["brief","Today"],["life","Lifecycle"],["prio","Roadmap priority"],["sig","Signals"],["after","After launch"],["rm","Roadmaps"],["sweep","Projects"]];
+const pmSigs=()=>((DATA.pm&&DATA.pm.signals)||[]).filter(s=>!s.hidden||pmHandled["sig:"+s.id]);
+const pmUnrel=()=>((DATA.pm&&DATA.pm.unreleased)||[]).filter(u=>u.error||u.prs.length);
+const pmDay=iso=>new Date(iso).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",timeZone:"UTC"});
+// the memo's decisions stay as first loaded, so a handled one keeps its ✓ and Undo after the proposal changes;
+// a reply older than the latest request is dropped
+const pmRefresh=()=>{const n=++pmSeq;return pmFetch("api/pm").then(b=>{if(n!==pmSeq)return;DATA.pm={...b,decisions:DATA.pm.decisions};render()})};
+// every approve, reject and undo of one product's Now lane shares one busy flag: one change at a time per lane
+const pmLock=k=>k.startsWith("prio")?"lane:"+k.split(":")[1]:k;
+function pmAct(key,body,msg,undo){
+  const lock=pmLock(key);
+  if(pmBusy.has(lock))return;
+  pmBusy.add(lock);render();
+  pmPost(body).then(r=>{pmHandled[key]={msg,undo:undo&&undo(r)};toast(msg);return pmRefresh()})
+    .catch(e=>toast(e.message,false,true)).finally(()=>{pmBusy.delete(lock);render()});
+}
+function pmUndoAct(key,body){
+  const lock=pmLock(key);
+  body=body||(pmHandled[key]&&pmHandled[key].undo);
+  if(!body||pmBusy.has(lock))return;
+  pmBusy.add(lock);render();
+  pmPost(body).then(()=>{delete pmHandled[key];toast("Undone");return pmRefresh()})
+    .catch(e=>toast(e.message,false,true)).finally(()=>{pmBusy.delete(lock);render()});
+}
+// the page sends the orders it shows: the server refuses the move when the lane or the proposal changed since
+function pmApprove(p,r){
+  const pr=DATA.pm.priority.find(x=>x.product===p);if(!pr)return;
+  const shown=[...pr.rows].sort((a,b)=>a.was-b.was).map(x=>x.id),row=r&&pr.rows.find(x=>x.id===r);
+  pmAct(r?`prio:${p}:${r}`:"prioall:"+p,r?{action:"approve",product:p,row:r,shown,rank:row.rank}:{action:"approve-all",product:p,shown,proposed:pr.rows.map(x=>x.id)},
+    r?"Approved":"Order saved to the roadmap",b=>({action:"restore",product:p,ids:b.before,expect:b.after}));
+}
+function pmActs(key,btns){
+  const h=pmHandled[key],busy=pmBusy.has(pmLock(key));
+  if(h)return `<span class="pm-done">✓ ${esc(h.msg)}</span>${h.undo?`<button class="btn" type="button" data-pm-undo2="${esc(key)}" ${busy?"disabled":""}>Undo</button>`:""}`;
+  return btns.map(([l,a],i)=>`<button class="btn${i===0?" primary":""}" type="button" ${a} ${busy?"disabled":""}>${esc(l)}</button>`).join("");
+}
+const pmSigBtns=s=>[["OK",`data-pm-sig="ok" data-s="${esc(s)}"`],["Ignore",`data-pm-sig="ignore" data-s="${esc(s)}"`]];
+function pmDecActs(x){
+  const see=`<button class="btn" type="button" data-pm-tab="${x.tab}">See ${{prio:"priority",sweep:"projects",sig:"signals",after:"launch"}[x.tab]}</button>`;
+  if(x.kind==="launch")return pmVerdictActs(x.launch)+see;
+  if(x.kind==="reorder")return pmActs("prioall:"+x.product,[["Approve order",`data-pm-prioall="${esc(x.product)}"`]])+see;
+  if(x.kind==="signal")return pmActs("sig:"+x.signal,pmSigBtns(x.signal))+see;
+  if(x.group==="finished")return (pmOpen().some(f=>f.group==="finished")?`<button class="btn primary" type="button" data-pm-closeall>Close all</button>`:`<span class="pm-done">✓ Closed</span>`)+see;
+  return see;
+}
+function viewPmToday(d){
+  const st=d.stats,dec=d.decisions,next=`${pmDay(d.nextRun)} ${hm(d.nextRun)} UTC`,s=n=>n===1?"":"s";
+  if(!dec.length)return `<div class="pm-empty"><div class="big">Nothing needs you today.</div>${st.followed} feature${s(st.followed)} moving. ${st.signals?`${st.signals} signal${s(st.signals)}, all on the roadmap.`:"No new customer signal."} Next run ${next}. No inbox item filed.</div>`;
+  const tiles=[[st.followed,"features followed"],[st.stuck,"stuck","var(--red)"],[st.launched,"launched, under watch"],[st.signals,"signals this week"],[st.inbox,"inbox items for you"]]
+    .map(([n,l,c])=>`<div class="pm-stat" style="cursor:default"><div class="n"${c&&n?` style="color:${c}"`:""}>${n}</div><div class="l">${l}</div></div>`).join("");
+  const items=dec.map(x=>`<li><div class="t">${esc(x.title)}</div><div class="e">${esc(x.text)}</div><div class="pm-acts">${pmDecActs(x)}</div></li>`).join("");
+  const runs=d.runs.length?d.runs.map(r=>`<div class="pm-log">${pmDay(r.at)} ${hm(r.at)} UTC · swept ${r.checked.projects} projects and ${r.checked.prototypes} prototypes: ${
+    r.total?Object.entries(r.counts).filter(([,n])=>n).map(([g,n])=>`${n} ${{proto:"unbuilt prototypes"}[g]||g}`).join(", "):"nothing slipped"}${r.checked.launches?` · ran day checks on ${r.checked.launches} launch${r.checked.launches===1?"":"es"}`:""}${r.filed?` · filed inbox item ${esc(r.filed)}`:""}</div>`).join("")
+    :`<div class="pm-log">No run since yesterday. Next run ${next}.</div>`;
+  return `<div class="pm-sum">${tiles}</div><div class="pm-memo"><div class="t">Morning memo · ${dec.length} decision${s(dec.length)}</div><ol>${items}</ol></div><div class="pm-grp"><h2>What I did since yesterday</h2>${runs}</div>`;
+}
+function pmPrioRow(p,r){
+  const key=`prio:${p.product}:${r.id}`,busy=pmBusy.has(pmLock(key)),cls=r.move[0]==="+"?"up":r.move[0]==="-"?"dn":"";
+  const acts=r.rejected?`<span class="pm-done">✓ Rejected, kept your order</span><button class="btn" type="button" data-pm-unreject="${esc(r.id)}" data-p="${esc(p.product)}" ${busy?"disabled":""}>Undo</button>`
+    :pmHandled[key]||r.move!=="="?pmActs(key,[["Approve",`data-pm-prio="approve" data-p="${esc(p.product)}" data-r="${esc(r.id)}"`],["Reject",`data-pm-prio="reject" data-p="${esc(p.product)}" data-r="${esc(r.id)}"`]]):"";
+  return `<tr class="${pmHandled[key]||r.rejected?"gone":""}"><td class="mono">${r.rank}</td><td><span class="pm-tag">${esc(r.id)}</span>${esc(r.title)}</td><td class="mono">P${r.was}</td><td class="pm-mv ${cls}">${r.move}</td><td class="mono">${r.asks}</td><td class="e">${esc(r.why)}</td><td><div class="pm-acts">${acts}</div></td></tr>`;
+}
+function viewPmPrio(d){
+  const why=`<div class="pm-why">My proposed order for each Now lane. Score = support tickets mapped to the row × 3, plus your place (P1 = 7 points down to P7 = 1), plus 3 when it touches money, payments, payouts, fraud, KYC or security. Nothing moves until you approve.</div>`;
+  if(!d.priority.length)return why+`<div class="pm-empty"><div class="big">No Now rows</div>Put rows in a product's Now lane on the Roadmap page.</div>`;
+  return why+d.priority.map(p=>`<div class="pm-grp"><h2>${esc(p.name)} <span class="ct">${p.moves}</span></h2><div class="pm-lc"><table class="pm-prio"><tr><th>#</th><th>Row</th><th>Was</th><th>Move</th><th>Customer asks</th><th>Why</th><th></th></tr>${p.rows.map(r=>pmPrioRow(p,r)).join("")}</table></div>
+    <div class="pm-acts">${p.moves||pmHandled["prioall:"+p.product]?pmActs("prioall:"+p.product,[["Approve whole order",`data-pm-prioall="${esc(p.product)}"`]]):`<span class="pm-meta">Your order matches the proposal.</span>`}</div></div>`).join("");
+}
+function viewPmSig(d){
+  const rows=pmSigs();
+  const why=`<div class="pm-why">What people asked for in the last 7 days, mapped to the roadmap. Sources: the support digest, your notes on inbox answers and messages to agents, inbox items waiting on you for more than 24 h.</div>`;
+  if(!rows.length)return why+`<div class="pm-empty"><div class="big">No signals this week</div>Nothing from support, your notes or the inbox in the last 7 days.</div>`;
+  return why+rows.map(s=>{const key="sig:"+s.id;
+    return `<div class="pm-row pm-sig${pmHandled[key]?" gone":""}"><div class="main"><div class="t"><span class="pm-tag">${esc(s.src)}</span>${esc(s.title)}</div><div class="e">${esc(s.evidence)}</div><div class="e">${s.maps.length?"Maps to: "+esc(s.maps.map(m=>`${m.id} ${m.title}`).join(", ")):"No roadmap row covers this"}</div></div><div class="pm-acts">${pmActs(key,pmSigBtns(s.id))}</div></div>`}).join("");
+}
+/* phase 3: After launch. A verdict is stored with the launch, so the card shows it (and its Undo) after a reload too. */
+const PM_VERDICTS=[["keep","Keep"],["iterate","Iterate"],["rollback","Roll back"]];
+const pmMark={y:"✓",n:"✕",w:"!"};
+const pmChip=x=>`<span class="pm-chk"><span class="pm-${x.state}">${pmMark[x.state]}</span>${esc(x.name)}${x.detail?` <span class="e">· ${esc(x.detail)}</span>`:""}</span>`;
+function pmVerdictActs(id){
+  const c=((DATA.pm&&DATA.pm.launches)||[]).find(x=>x.id===id),key="launch:"+id,busy=pmBusy.has(key);
+  if(!c)return "";
+  if(c.verdict)return `<span class="pm-done">✓ ${esc((PM_VERDICTS.find(v=>v[0]===c.verdict.by)||[,c.verdict.by])[1])} · ${pmDay(c.verdict.at)}</span>${c.rollback?`<span class="pm-meta">${esc(c.rollback)}</span>`:""}<button class="btn" type="button" data-pm-unverdict="${esc(id)}" ${busy?"disabled":""}>Undo</button>`;
+  const failing=c.chips.some(x=>x.state==="n");  // errors up: no yellow "Keep" nudging the owner to dismiss it
+  return PM_VERDICTS.map(([v,l],i)=>`<button class="btn${i===0&&!failing?" primary":""}" type="button" data-pm-verdict="${v}" data-l="${esc(id)}" ${busy?"disabled":""}>${l}</button>`).join("");
+}
+function viewPmAfter(d){
+  const why=`<div class="pm-why">Every release shipped in the last 35 days, with its launch kit (changelog, email, brag video, caption) and checks on day 1, 7 and 30: comms sent, errors since launch, support tickets about it. Then your verdict: keep, iterate or roll back.</div>`;
+  if(!d.launches.length)return why+`<div class="pm-empty"><div class="big">No launches in the last 35 days</div>Shipped releases show here once the release manager records them.</div>`;
+  return why+d.launches.map(c=>`<div class="pm-row pm-launch${c.verdict?" gone":""}"><div class="main"><div class="t"><span class="pm-tag">${esc(c.name)}</span>${c.prs.map(p=>`${c.repo?`<a href="https://github.com/${esc(c.repo)}/pull/${p.number}" target="_blank" rel="noopener">#${p.number}</a>`:`#${p.number}`} ${esc(p.title)}`).join(" · ")||esc((c.sha||"").slice(0,8))}</div>
+    <div class="e">${pmDay(c.at)} · day ${c.day} · next: ${esc(c.next)}${c.titlesError?` · PR titles unavailable: ${esc(c.titlesError)}`:""}</div>
+    ${pmKitLine(c)}
+    <div class="pm-chips">${c.chips.map(pmChip).join("")}</div>
+    ${Object.entries(c.checks).map(([k,v])=>`<div class="e">Day ${k.slice(1)} check, ${pmDay(v.at)}: ${v.chips.map(x=>`<span class="pm-${x.state}">${pmMark[x.state]}</span> ${esc(x.name)}`).join(", ")}</div>`).join("")}</div>
+    <div class="pm-acts">${pmVerdictActs(c.id)}</div></div>`).join("");
+}
+/* phase 4b: the launch kit. Draft the missing stores the missing changelog; the release comms run drafts the email, video and caption. */
+function pmKitLine(c){
+  const k=c.kit;if(!k)return "";
+  const busy=pmBusy.has("kit:"+c.id)?"disabled":"",n=k.missing.length;
+  const body=k.error?`<span class="pm-chk"><span class="pm-w">!</span><span class="e">${esc(k.error)}</span></span>`:k.note?`<span class="pm-chk e">${esc(k.note)}</span>`:k.items.map(pmChip).join("");
+  const acts=k.queued?`<span class="pm-done">✓ changelog stored ${pmDay(k.queued.at)}</span><button class="btn" type="button" data-pm-kit-undo="${esc(c.id)}" ${busy}>Undo</button>`
+    :n?`<button class="btn" type="button" data-pm-kit="${esc(c.id)}" ${busy}>Draft the missing ${n}</button>`:"";
+  return `<div class="pm-chips pm-kit"><span class="pm-chk e">Launch kit:</span>${body}${acts?`<span class="pm-acts">${acts}</span>`:""}</div>`;
+}
+function pmKit(id,undo){
+  const key="kit:"+id;if(pmBusy.has(key))return;
+  pmBusy.add(key);render();
+  pmPost({action:"kit",launch:id,undo})
+    .then(()=>{toast(undo?"Undone":"Changelog stored");return pmRefresh()})
+    .catch(e=>toast(e.message,false,true)).finally(()=>{pmBusy.delete(key);render()});
+}
+function pmVerdict(id,by){
+  const key="launch:"+id;if(pmBusy.has(key))return;
+  pmBusy.add(key);render();
+  pmPost(by?{action:"verdict",launch:id,verdict:by}:{action:"unverdict",launch:id})
+    .then(r=>{toast(by?(r.command?`Verdict: roll back (${r.command})`:"Verdict: "+by):"Undone");return pmRefresh()})
+    .catch(e=>toast(e.message,false,true)).finally(()=>{pmBusy.delete(key);render()});
+}
+/* phase 4a: Lifecycle. Unstick files one inbox item and notes "nudged" on the server; it starts no agent. */
+function viewPmLife(d){
+  const why=`<div class="pm-why">Where each feature is right now, from the first customer ask to 30 days after launch. Red = in its stage past that stage's limit. Unstick files one inbox item; it starts no agent.</div>`;
+  if(!d.lifecycle.length)return why+`<div class="pm-empty"><div class="big">No features followed</div>Open projects and Now rows show here.</div>`;
+  const S=d.lifeStages;
+  const dot=(f,j)=>`<span class="pm-st ${j===f.stage?(f.stuck?"stuck":"now"):j<f.stage?(f.reached[j]?"ok":"skip"):""}" title="${esc(S[j])}"></span>`;
+  const acts=f=>{const busy=pmBusy.has("life:"+f.id)?"disabled":"";
+    return f.nudged?`<span class="pm-done">✓ nudged ${pmDay(f.nudged)}</span><button class="btn" type="button" data-pm-unstick-undo="${esc(f.id)}" ${busy}>Undo</button>`
+      :f.stuck&&!f.unread?`<button class="btn primary" type="button" data-pm-unstick="${esc(f.id)}" ${busy}>Unstick</button>`:""};
+  return why+`<div class="pm-lc"><table class="pm-prio pm-life"><tr><th>Feature</th>${S.map(s=>`<th>${esc(s)}</th>`).join("")}<th>Days</th><th></th></tr>${d.lifecycle.map(f=>
+    `<tr class="${f.nudged?"gone":""}"><td><div class="t">${esc(f.title)}</div><div class="e"><span class="pm-tag">${esc(f.tag)}</span>${esc(f.note)}</div></td>${S.map((_,j)=>`<td>${dot(f,j)}</td>`).join("")}<td class="mono${f.stuck?" n":""}">${f.days==null?"–":(f.stuck?"stuck ":"")+f.days+"d"}</td><td><div class="pm-acts">${acts(f)}</div></td></tr>`).join("")}</table></div>`;
+}
+function pmUnstick(id,undo){
+  const key="life:"+id;if(pmBusy.has(key))return;
+  pmBusy.add(key);render();
+  pmPost({action:"unstick",feature:id,undo})
+    .then(r=>{toast(undo?"Undone":`Nudged: inbox item ${r.item}`);return pmRefresh()})
+    .catch(e=>toast(e.message,false,true)).finally(()=>{pmBusy.delete(key);render()});
+}
+/* phase 4d: Roadmaps. An agent proposes a first roadmap (factory pm propose-roadmap); Approve adds a row to the
+   Roadmap view (no Undo: it is there now), Drop has Undo. One change at a time per product card. */
+const PM_RM_TAG={none:"no roadmap",draft:"draft ready",live:"in Roadmap view"};
+const PM_RM_LANE={now:"Now",next:"Next",later:"Later"};
+let pmRmErr={};  // row id: the roadmap error shown on that row until it is retried
+function pmRm(product,body,msg){
+  const key="rm:"+product;if(pmBusy.has(key))return;
+  pmBusy.add(key);render();
+  pmPost(body).then(r=>{if(body.row)delete pmRmErr[body.row];toast(msg(r));return pmRefresh()})
+    .catch(e=>{const row=e.body&&e.body.row;if(row)pmRmErr[row]=e.message;toast(e.message,false,true);return pmRefresh()})  // a 409: another proposal came
+    .finally(()=>{roadLoaded=false;pmBusy.delete(key);render()});  // the Roadmap view re-reads its items when opened
+}
+function pmRmRow(c,x){
+  const busy=pmBusy.has("rm:"+c.product)?"disabled":"",at=`data-p="${esc(c.product)}" data-r="${esc(x.id)}" data-at="${esc(c.at)}"`,err=x.status==="proposed"&&pmRmErr[x.id];
+  const acts=x.status==="approved"?`<span class="pm-done">✓ added as ${esc(x.item)}</span>`
+    :x.status==="dropped"?`<span class="pm-done">✓ Dropped</span><button class="btn" type="button" data-pm-rm="drop" data-u="1" ${at} ${busy}>Undo</button>`
+    :`<button class="btn primary" type="button" data-pm-rm="approve" ${at} ${busy}>Approve</button><button class="btn" type="button" data-pm-rm="drop" ${at} ${busy}>Drop</button>`;
+  return `<tr class="${x.status==="proposed"?"":"gone"}"><td class="mono">${esc(PM_RM_LANE[x.lane]||x.lane)}</td><td>${esc(x.title)}${err?`<div class="pm-rm-err">${esc(err)}</div>`:""}</td><td class="e">${esc(x.goal)}</td><td class="e">${esc(x.evidence)}</td><td><div class="pm-acts">${acts}</div></td></tr>`;
+}
+function viewPmRm(d){
+  const why=`<div class="pm-why">Products with no roadmap get a proposed one from an agent, drawn from their issues, board projects, support and orders. Each row has a goal and the evidence behind it. Approve row by row: approved rows go to the Roadmap view.</div>`;
+  if(!d.roadmaps.length)return why+`<div class="pm-empty"><div class="big">No products</div>Add one with factory product set.</div>`;
+  return why+d.roadmaps.map(c=>{const open=c.rows.some(x=>x.status==="proposed"),busy=pmBusy.has("rm:"+c.product)?"disabled":"";
+    return `<div class="pm-row pm-rm"><div class="main"><div class="t">${esc(c.name)} <span class="pm-tag">${PM_RM_TAG[c.status]}</span></div><div class="e">Sources: ${esc(c.sources)}</div>${
+      c.status==="none"&&!c.rows.length?`<div class="e">An agent proposes one with <span class="mono">${esc(c.command)}</span></div>`:""}</div>${
+      open?`<div class="pm-acts"><button class="btn primary" type="button" data-pm-rmall="${esc(c.product)}" data-at="${esc(c.at)}" ${busy}>Approve all</button></div>`:""}${
+      c.rows.length?`<div class="pm-lc"><table class="pm-prio"><tr><th>Lane</th><th>Row</th><th>Goal</th><th>Evidence</th><th></th></tr>${c.rows.map(x=>pmRmRow(c,x)).join("")}</table></div>`:""}</div>`}).join("");
+}
+function viewPmSweep(d){
+  const need=pmOpen().length,cnt=g=>pmOpen().filter(f=>f.group===g).length,unrel=pmUnrel();
+  const meta=`<div class="pm-meta">checked ${d.checked.projects} projects, ${d.checked.prototypes} prototypes · ${hm(d.at)} UTC</div>`;
+  const head=`<div class="pm-head"><div><div class="pm-lede">${need?`<b>${need} thing${need>1?"s":""} slipped.</b> ${cnt("finished")} finished and still open, ${cnt("proto")} validated prototype${cnt("proto")===1?"":"s"} not marked built, ${cnt("quiet")} quiet, ${cnt("late")} late.`:"<b>Nothing slipped.</b>"}</div>${meta}</div>
+    <div class="pm-acts">${cnt("finished")>1?`<button class="btn primary" type="button" data-pm-closeall>Close all finished (${cnt("finished")})</button>`:""}</div></div>`;
+  const merged=unrel.length&&!pmFilter?`<div class="pm-grp"><h2><span class="pm-dot" style="background:var(--orange)"></span>Merged, not in prod <span class="ct">${unrel.reduce((a,u)=>a+u.prs.length,0)}</span></h2><div class="why">Merged into the base branch, not released yet.</div>${unrel.map(u=>
+    `<div class="pm-row"><div class="main"><div class="t">${esc(u.name)} <span class="pm-tag">${u.error?"read failed":u.prs.length}</span></div><div class="e">${u.error?esc("Could not read: "+u.error)
+      :u.prs.map(p=>`<a href="https://github.com/${esc(u.repo)}/pull/${p.number}" target="_blank" rel="noopener">#${p.number}</a> ${esc(p.title)}`).join(" · ")}</div></div></div>`).join("")}</div>`:"";
+  if(!d.findings.length)return head+`<div class="pm-empty"><div class="big">Nothing slipped</div>Every open project is moving.</div>`+merged;
+  const tiles=PM_GROUPS.map(([k,c,h])=>`<button class="pm-stat" type="button" data-pm-filter="${k}" aria-pressed="${pmFilter===k}"><div class="n" style="color:${c}">${cnt(k)}</div><div class="l">${h}</div></button>`).join("");
+  const groups=PM_GROUPS.filter(([k])=>!pmFilter||pmFilter===k).map(([k,c,h,why])=>{
+    const rows=d.findings.filter(f=>f.group===k);
+    return rows.length?`<div class="pm-grp"><h2><span class="pm-dot" style="background:${c}"></span>${h} <span class="ct">${cnt(k)}</span></h2><div class="why">${why(d.quietDays)}</div>${rows.map(pmRow).join("")}</div>`:"";
+  }).join("");
+  return head+`<div class="pm-sum">${tiles}</div>${groups}${merged}`;
+}
+function viewPm(){
+  const d=DATA.pm||{};
+  if(pmError)return `<div class="pm-err"><span>Could not run the sweep: ${esc(pmError)}</span><button class="btn" type="button" data-pm-run>Retry</button></div>`;
+  if(pmLoading||!d.findings)return `<div class="pm-head"><div><div class="pm-lede">Sweeping…</div></div></div><div class="pm-sum">${'<div class="pm-skel"></div>'.repeat(4)}</div>${'<div class="pm-skel"></div>'.repeat(5)}`;
+  const n={brief:d.decisions.length,life:(d.lifecycle||[]).length,prio:d.priority.reduce((a,p)=>a+p.moves,0),sig:pmSigs().filter(s=>!pmHandled["sig:"+s.id]).length,after:(d.launches||[]).filter(c=>!c.verdict).length,rm:(d.roadmaps||[]).filter(c=>c.status!=="live").length,
+           sweep:pmOpen().length+pmUnrel().reduce((a,u)=>a+u.prs.length,0)};
+  const tabs=`<div class="pm-head" style="align-items:center"><div class="pm-tabs">${PM_TABS.map(([k,l])=>`<button class="pm-tab" type="button" data-pm-tab="${k}" aria-pressed="${pmTab===k}">${l}<span class="c">${n[k]}</span></button>`).join("")}</div><button class="btn" type="button" data-pm-run>Run now</button></div>`;
+  const se=d.supportError?`<div class="pm-err"><span>Support did not answer (${esc(d.supportError.error)}). Support signals are from ${d.supportError.from?pmDay(d.supportError.from):"no earlier run"}; projects, roadmap and the inbox are fresh.</span></div>`:"";
+  const errs=d.errors?(pmTab==="brief"?[].concat(...Object.values(d.errors)):d.errors[pmTab]||[]):[];
+  const be=[...new Set(errs)].map(e=>`<div class="pm-err"><span>Could not read ${esc(e)}. This part of the page is left out until it is fixed.</span></div>`).join("");
+  return tabs+se+be+(pmTab==="life"?viewPmLife(d):pmTab==="prio"?viewPmPrio(d):pmTab==="sig"?viewPmSig(d):pmTab==="after"?viewPmAfter(d):pmTab==="rm"?viewPmRm(d):pmTab==="sweep"?viewPmSweep(d):viewPmToday(d));
+}
+document.addEventListener("click",e=>{
+  let x;
+  if(x=e.target.closest("[data-pm-tab]")){pmTab=x.dataset.pmTab;render();return}
+  if(x=e.target.closest("[data-pm-prio]")){const p=x.dataset.p,r=x.dataset.r;
+    if(x.dataset.pmPrio==="approve")pmApprove(p,r);else pmAct(`prio:${p}:${r}`,{action:"reject",product:p,row:r},"Rejected, kept your order",null);return}
+  if(x=e.target.closest("[data-pm-prioall]")){pmApprove(x.dataset.pmPrioall);return}
+  if(x=e.target.closest("[data-pm-sig]")){const s=x.dataset.s,a=x.dataset.pmSig;pmAct("sig:"+s,{action:a,signal:s},a==="ok"?"Noted":"Ignored for 14 days",()=>({action:"unhide",signal:s}));return}
+  if(x=e.target.closest("[data-pm-undo2]")){pmUndoAct(x.dataset.pmUndo2);return}
+  if(x=e.target.closest("[data-pm-verdict]")){pmVerdict(x.dataset.l,x.dataset.pmVerdict);return}
+  if(x=e.target.closest("[data-pm-unstick]")){pmUnstick(x.dataset.pmUnstick,false);return}
+  if(x=e.target.closest("[data-pm-unstick-undo]")){pmUnstick(x.dataset.pmUnstickUndo,true);return}
+  if(x=e.target.closest("[data-pm-kit]")){pmKit(x.dataset.pmKit,false);return}
+  if(x=e.target.closest("[data-pm-kit-undo]")){pmKit(x.dataset.pmKitUndo,true);return}
+  if(x=e.target.closest("[data-pm-rm]")){const op=x.dataset.pmRm,undo=!!x.dataset.u;
+    pmRm(x.dataset.p,{action:"roadmap-row",row:x.dataset.r,op,undo,at:x.dataset.at},r=>undo?"Undone":op==="drop"?"Dropped":`Added as ${r.row.item}`+(r.row.warning?` (${r.row.warning})`:""));return}
+  if(x=e.target.closest("[data-pm-rmall]")){const p=x.dataset.pmRmall;pmRm(p,{action:"roadmap-all",product:p,at:x.dataset.at},r=>`${r.approved} row${r.approved===1?"":"s"} added to the Roadmap view`);return}
+  if(x=e.target.closest("[data-pm-unverdict]")){pmVerdict(x.dataset.pmUnverdict,null);return}
+  if(x=e.target.closest("[data-pm-unreject]")){const p=x.dataset.p,r=x.dataset.pmUnreject;pmUndoAct(`prio:${p}:${r}`,{action:"unreject",product:p,row:r});return}
+  if(x=e.target.closest("[data-pm-filter]")){pmFilter=pmFilter===x.dataset.pmFilter?null:x.dataset.pmFilter;render();return}
+  if(x=e.target.closest("[data-pm-act]")){pmDo(x.dataset.pmAct,+x.dataset.i);return}
+  if(x=e.target.closest("[data-pm-undo]")){pmUndo(x.dataset.pmUndo);return}
+  if(x=e.target.closest("[data-pm-proto]")){openProtoDrawer(x.dataset.pmProto,x.dataset.v);return}
+  if(e.target.closest("[data-pm-run]")){loadPmFromServer();return}
+  if(e.target.closest("[data-pm-closeall]")){pmCloseAll();return}
+  if(e.target.closest("[data-show-closed]")){showClosed=!showClosed;render()}
+});
+/* --- End Product manager View --- */
+
 const ICON={
   home:'<path d="M2.5 7L8 2.5 13.5 7v6.5h-11z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>',
+  pm:'<path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
   roadmap:'<path d="M2.5 4h11M2.5 8h7M2.5 12h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
   agents:'<circle cx="8" cy="5.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c.8-2.6 2.7-3.8 5-3.8s4.2 1.2 5 3.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
   skills:'<path d="M9 2L4 9h4.5L7 14l6-8H8.5L10 2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>',
@@ -4672,24 +5148,24 @@ const ic=k=>`<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
 function parse(){const h=location.hash.replace(/^#\/?/,"").split("/");
   if(h[0]==="p"&&proj(h[1]))return {product:proj(h[1]).product,view:"project",id:h[1]};
   const prod=DATA.products[h[0]]||h[0]==="all"?h[0]:Object.keys(DATA.products)[0];
-  const known=["roadmap","agents","skills","prototypes","automation","tokens","log"];
+  const known=["roadmap","pm","agents","skills","prototypes","automation","tokens","log"];
   return {product:prod,view:known.includes(h[1])?h[1]:known.includes(h[0])?h[0]:"home",id:null}}
 function render(){
   route=parse();
-  const isSpecial=["roadmap","agents","skills","prototypes","automation","tokens","log"].includes(route.view);
+  const isSpecial=["roadmap","pm","agents","skills","prototypes","automation","tokens","log"].includes(route.view);
   const keys=[...Object.keys(DATA.products),"all"],sv=isSpecial?"/"+route.view:"";
   const cur=k=>route.product===k?'aria-current="page"':"",n=k=>openLevers(k).length;
   const wproto=()=>(DATA.protos||[]).filter(p=>(route.product==="all"||p.product===route.product)&&p.versions[0].status==="waiting").length;
   const wroad=()=>(DATA.roadmap?.items||[]).filter(i=>(route.product==="all"||i.product===route.product)&&i.lane==="now").length;
   $("#side").innerHTML=`<div class="brand"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x=".75" y=".75" width="16.5" height="16.5" rx="4" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M4.5 11.5h9M9 11.5V5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>Factory</div>
-   ${[["home","Home"],["roadmap","Roadmap"],["agents","Agents"],["skills","Skills"],["prototypes","Prototypes"],["automation","Automation"],["tokens","Tokens"],["log","Decision log"]].map(([k,t])=>{const badge=k==="home"?`<span class="cnt ${n(route.product)?"":"z"}">${n(route.product)}</span>`:k==="roadmap"?`<span class="cnt z">${wroad()}</span>`:k==="prototypes"?`<span class="cnt ${wproto()?"":"z"}">${wproto()}</span>`:"";return `<button class="nav" data-sec="${k}" ${(route.view===k||(k==="home"&&route.view==="project"))?'aria-current="page"':""}>${ic(k)}${t}${badge}</button>`}).join("")}
+   ${[["home","Home"],["roadmap","Roadmap"],["pm","Product manager"],["agents","Agents"],["skills","Skills"],["prototypes","Prototypes"],["automation","Automation"],["tokens","Tokens"],["log","Decision log"]].map(([k,t])=>{const badge=k==="pm"?`<span class="cnt ${pmCount()?"":"z"}">${pmCount()}</span>`:k==="home"?`<span class="cnt ${n(route.product)?"":"z"}">${n(route.product)}</span>`:k==="roadmap"?`<span class="cnt z">${wroad()}</span>`:k==="prototypes"?`<span class="cnt ${wproto()?"":"z"}">${wproto()}</span>`:"";return `<button class="nav" data-sec="${k}" ${(route.view===k||(k==="home"&&route.view==="project"))?'aria-current="page"':""}>${ic(k)}${t}${badge}</button>`}).join("")}
    <div class="grp">Products</div>${keys.map(k=>`<a class="nav" href="#/${k}${sv}" ${cur(k)}>${ic("box")}${k==="all"?"All products":esc(DATA.products[k].name)}${k==="all"?"":`<span class="cnt ${n(k)?"":"z"}">${n(k)}</span>`}</a>`).join("")}
    <div class="foot">Built ${DATA.builtAt.slice(5,10)} ${hm(DATA.builtAt)} UTC</div>`;
   $("#ptabs").innerHTML=keys.map(k=>`<a class="ptab" href="#/${k}${sv}" ${cur(k)}>${k==="all"?"All":esc(DATA.products[k].name)}${k==="all"?"":`<span class="cnt ${n(k)?"":"z"}">${n(k)}</span>`}</a>`).join("");
-  $("#bottombar").innerHTML=[["home","Home"],["roadmap","Roadmap"],["agents","Agents"],["skills","Skills"],["prototypes","Protos"],["automation","Auto"],["tokens","Tokens"],["log","Log"]].map(([k,t])=>`<button data-sec="${k}" ${(route.view===k||(k==="home"&&route.view==="project"))?'aria-current="page"':""}>${ic(k)}${t}</button>`).join("");
+  $("#bottombar").innerHTML=[["home","Home"],["roadmap","Roadmap"],["pm","PM"],["agents","Agents"],["skills","Skills"],["prototypes","Protos"],["automation","Auto"],["tokens","Tokens"],["log","Log"]].map(([k,t])=>`<button data-sec="${k}" ${(route.view===k||(k==="home"&&route.view==="project"))?'aria-current="page"':""}>${ic(k)}${t}</button>`).join("");
   $("#title").textContent=route.product==="all"?"All products":DATA.products[route.product].name;
-  $("#subtitle").textContent=route.view==="tokens"?"Tokens":route.view==="skills"?"Skills":route.view==="prototypes"?"Prototypes":route.view==="automation"?"Automation":route.view==="agents"?"Agents":route.view==="log"?"Decision log":route.view==="roadmap"?"Roadmap":"Projects";
-  const v=route.view==="tokens"?viewTokens(route.product):route.view==="skills"?viewSkills(route.product):route.view==="prototypes"?viewProtos(route.product):route.view==="automation"?viewAutomation(route.product):route.view==="agents"?viewAgents(route.product):route.view==="log"?viewLog(route.product):route.view==="roadmap"?viewRoadmap(route.product):route.product==="all"?viewAll():viewHome(route.product);
+  $("#subtitle").textContent=route.view==="tokens"?"Tokens":route.view==="skills"?"Skills":route.view==="prototypes"?"Prototypes":route.view==="automation"?"Automation":route.view==="agents"?"Agents":route.view==="log"?"Decision log":route.view==="roadmap"?"Roadmap":route.view==="pm"?"Product manager":"Projects";
+  const v=route.view==="tokens"?viewTokens(route.product):route.view==="skills"?viewSkills(route.product):route.view==="prototypes"?viewProtos(route.product):route.view==="automation"?viewAutomation(route.product):route.view==="agents"?viewAgents(route.product):route.view==="log"?viewLog(route.product):route.view==="roadmap"?viewRoadmap(route.product):route.view==="pm"?viewPm():route.product==="all"?viewAll():viewHome(route.product);
   $("#main").innerHTML=v;
   const ob=$("#officeBtn");
   if(ob && typeof ob.removeAttribute === "function"){
@@ -4710,6 +5186,8 @@ function render(){
   tick();syncDrawer();syncProtoDrawer();syncApDrawer();syncBoardDrawer();
   if(route.view==="automation"&&autoTab==="board"&&!boardLoaded){boardLoaded=true;loadBoardFromServer();}
   if(route.view==="roadmap"&&!roadLoaded){roadLoaded=true;loadRoadmapFromServer();}
+  if(route.view==="pm"&&!pmLoaded){pmLoaded=true;loadPmFromServer();}
+  if(route.view==="automation"&&autoTab==="releases"&&!releaseLoaded){loadReleaseFromServer();releaseTick();}
   if(route.view==="automation"&&autoTab==="develop-queue"&&!queueLoaded){queueLoaded=true;loadQueueFromServer();}
   if(route.view==="automation"&&autoTab==="release-comms"&&!commsLoaded){commsLoaded=true;loadCommsFromServer();}
 }
@@ -4901,6 +5379,7 @@ $("#boardDrawer").addEventListener("click",e=>{if(e.target.id==="boardDrawer")cl
 $("#boardDwClose").onclick=closeBoardDrawer;
 document.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&e.target.matches?.(".card[data-open]")){location.hash="#/p/"+e.target.dataset.open;return}
+  if((e.key==="Enter"||e.key===" ")&&e.target.matches?.("[data-sv-card]")){e.preventDefault();e.target.click();return}
   if(e.key==="Enter"&&e.target.matches?.("[data-popen]")){openProtoDrawer(e.target.dataset.popen,e.target.dataset.pver);return}
   if(route.view!=="project"||/TEXTAREA|INPUT/.test(document.activeElement.tagName))return;if(e.key==="ArrowRight")step(1);if(e.key==="ArrowLeft")step(-1)});
 // inbox keyboard: j/k move, Enter open, 1-4 pick an option, Cmd/Ctrl+Enter save
@@ -4923,7 +5402,7 @@ $("#dwBar").addEventListener("pointerup",e=>{if(!t0)return;const dy=e.clientY-t0
 let sx=null;
 $("#dwBody").addEventListener("touchstart",e=>{sx=[e.touches[0].clientX,e.touches[0].clientY]},{passive:true});
 $("#dwBody").addEventListener("touchend",e=>{if(!sx)return;const dx=e.changedTouches[0].clientX-sx[0],dy=e.changedTouches[0].clientY-sx[1];sx=null;if(Math.abs(dx)>70&&Math.abs(dx)>2*Math.abs(dy)&&!e.target.closest("svg,table"))step(dx<0?1:-1)});
-addEventListener("hashchange",()=>{layer("");showAllTokens=false;const was=route.view==="project";openLever=null;openProto=null;openProtoVer=null;apMode=null;apEditing=null;apPendingSend=null;openBoardCard=null;boardLoaded=false;roadLoaded=false;dirty=false;document.body.classList.remove("open");dqSel=null;const pan=document.getElementById("panel");if(pan)pan.setAttribute("inert","");render();if(route.view!=="project"&&!was)scrollTo(0,0)});
+addEventListener("hashchange",()=>{layer("");showAllTokens=false;const was=route.view==="project";openLever=null;openProto=null;openProtoVer=null;apMode=null;apEditing=null;apPendingSend=null;openBoardCard=null;boardLoaded=false;roadLoaded=false;pmLoaded=false;dirty=false;document.body.classList.remove("open");dqSel=null;const pan=document.getElementById("panel");if(pan)pan.setAttribute("inert","");render();if(route.view!=="project"&&!was)scrollTo(0,0)});
 document.addEventListener("click",e=>{
   const grpBtn = e.target.closest("#skillGroupTabs button");
   if(grpBtn){ skillGroup = grpBtn.dataset.grp; render(); return; }
@@ -5000,9 +5479,10 @@ document.addEventListener("click",e=>{
   const addSave=e.target.closest("[data-ap-add-save]");if(addSave){apAdd();return}
   const editSave=e.target.closest("[data-ap-edit-save]");if(editSave){apSave();return}
   const tg=e.target.closest("[data-ap-toggle]");if(tg){apToggle(tg.dataset.apToggle,tg.checked);return}
+  const svc=e.target.closest("[data-sv-card]");if(svc&&!e.target.closest(".sv-detail")&&!(e.detail>0&&String(getSelection()).length)){const k=svc.dataset.svCard;svOpen.has(k)?svOpen.delete(k):svOpen.add(k);render();document.querySelector(`[data-sv-card="${CSS.escape(k)}"]`)?.focus();return}
 });
 document.addEventListener("click",e=>{
-  const tab=e.target.closest("[data-autotab]");if(tab){autoTab=tab.dataset.autotab;document.body.classList.remove("open");dqSel=null;const pan=document.getElementById("panel");if(pan)pan.setAttribute("inert","");if(autoTab==="develop-queue"&&!queueLoaded){queueLoaded=true;loadQueueFromServer();}if(autoTab==="release-comms"&&!commsLoaded){commsLoaded=true;loadCommsFromServer();}render();return}
+  const tab=e.target.closest("[data-autotab]");if(tab){autoTab=tab.dataset.autotab;document.body.classList.remove("open");dqSel=null;const pan=document.getElementById("panel");if(pan)pan.setAttribute("inert","");if(autoTab==="releases"){releaseLoaded=false;}if(autoTab==="develop-queue"&&!queueLoaded){queueLoaded=true;loadQueueFromServer();}if(autoTab==="release-comms"&&!commsLoaded){commsLoaded=true;loadCommsFromServer();}render();return}
   const rcp=e.target.closest("[data-rc-product]");if(rcp){rcProduct=rcp.dataset.rcProduct;rcActiveJobId=null;rcActiveChangelogKey=null;render();return}
   const rcs=e.target.closest("[data-rc-screen]");if(rcs){rcScreen=rcs.dataset.rcScreen;render();return}
   const rcgs=e.target.closest("[data-rc-goto-screen]");if(rcgs){rcScreen=rcgs.dataset.rcGotoScreen;if(rcgs.dataset.rcTargetJob)rcActiveJobId=rcgs.dataset.rcTargetJob;if(rcgs.dataset.rcTargetCl)rcActiveChangelogKey=rcgs.dataset.rcTargetCl;render();return}
@@ -5012,6 +5492,8 @@ document.addEventListener("click",e=>{
   const rcl=e.target.closest("[data-rc-lang]");if(rcl){rcLang=rcl.dataset.rcLang;render();return}
   const rcv=e.target.closest("[data-rc-viewport]");if(rcv){rcViewport=rcv.dataset.rcViewport;render();return}
   const rcf=e.target.closest("[data-rc-frame-idx]");if(rcf){rcFrameIndex=parseInt(rcf.dataset.rcFrameIdx,10);render();return}
+  const rlr=e.target.closest("[data-rl-retry]");if(rlr){loadReleaseFromServer();return}
+  for(const a of ["pause","resume","unhold"]){const b=e.target.closest("[data-rl-"+a+"]");if(b&&!b.disabled){releasePost(a,b.dataset["rl"+a[0].toUpperCase()+a.slice(1)]);return}}
   const rcr=e.target.closest("[data-rc-retry]");if(rcr){loadCommsFromServer();return}
   const sg=e.target.closest("[data-st]");if(sg){openDqStage(sg.dataset.pr,sg.dataset.st);return}
   const c=e.target.closest(".chip");if(c){dqFilters.product=c.dataset.p||null;render();return}

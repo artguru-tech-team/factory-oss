@@ -104,6 +104,7 @@ async function waitForCardColumn(page, id, col, timeout = 8000) {
 async function checkLoadedView(name, viewport, { interact }) {
   const { page, errors } = await newPage(viewport);
   await page.goto(url + "#/bk/automation", { waitUntil: "networkidle" });
+  await page.click('[data-autotab="board"]');
   await page.waitForSelector(".board-grid", { timeout: 10000 });
   await page.waitForTimeout(300);
 
@@ -140,6 +141,7 @@ async function checkLoadedView(name, viewport, { interact }) {
 
     // reload: GET /api/board must keep the card in Triage
     await page.reload({ waitUntil: "networkidle" });
+    await page.click('[data-autotab="board"]');
     await page.waitForSelector(".board-grid", { timeout: 10000 });
     const triaged = await waitForCardColumn(page, "o/r#142", "Triage");
     if (!triaged) errors.push("after reload the promoted card is not in Triage (GET /api/board)");
@@ -153,6 +155,7 @@ async function checkLoadedView(name, viewport, { interact }) {
 async function checkStuckStyle() {
   const { page, errors } = await newPage({ width: 390, height: 844 });
   await page.goto(url + "#/bk/automation", { waitUntil: "networkidle" });
+  await page.click('[data-autotab="board"]');
   await page.waitForSelector(".board-grid", { timeout: 10000 });
   await page.click("[data-bstuck]");
   await page.waitForTimeout(300);
@@ -174,6 +177,7 @@ async function checkErrorState() {
   const { page, errors } = await newPage({ width: 1440, height: 900 });
   await spawnBuild({ FACTORY_BOARD_FAIL: "1" });
   await page.goto(url + "#/bk/automation", { waitUntil: "networkidle" });
+  await page.click('[data-autotab="board"]');
   await page.waitForTimeout(400);
 
   // innerText (not textContent) so the inline <script> source does not count as page text
@@ -204,6 +208,7 @@ async function checkEmptyState() {
   const { page, errors } = await newPage({ width: 1440, height: 900 });
   await spawnBuild({ FACTORY_BOARD_EMPTY: "1" });
   await page.goto(url + "#/bk/automation", { waitUntil: "networkidle" });
+  await page.click('[data-autotab="board"]');
   await page.waitForTimeout(400);
 
   const empty = await page.evaluate(() => document.body.innerText.includes("No factory issues"));

@@ -3,7 +3,7 @@ import hashlib
 import re
 import hmac
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from . import store, t3
 
@@ -16,6 +16,10 @@ LABEL_TABLE = {
     "perf": "Speeding up {p}",
     "test": "Writing tests for {p}",
 }
+
+IDLE_WINDOW = timedelta(hours=6)  # finished agents stay at their desk this long
+IDLE_LABEL = "Between tasks on {p}"  # done and failed look the same: no error goes public
+IDLE_PER_ROOM = 4  # a burst of failed runs must not fill a room: only the newest few stay
 
 PROVIDER_MAP = {
     "claude": "Claude",
@@ -63,17 +67,23 @@ def _s(a: dict, key: str) -> str:
     return v if isinstance(v, str) else ""
 
 
-def _since(raw: str):
-    """A parsed ISO timestamp, re-serialised, else None: only a date can leave through this field."""
+def _dt(raw: str):
+    """raw parsed as an aware UTC datetime, else None."""
     try:
         dt = t3.ts(raw)
-    except ValueError:
-        return None
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return store.iso(dt.astimezone(timezone.utc))  # no source time zone
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except (ValueError, OverflowError, TypeError, AttributeError):
+        return None  # one odd row must not empty the office
+
+
+def _since(raw: str):
+    """A parsed ISO timestamp, re-serialised, else None: only a date can leave through this field."""
+    dt = _dt(raw)
+    return store.iso(dt) if dt else None  # no source time zone
 
 
 def _agent_public_id(salt: bytes, a: dict) -> str:
@@ -85,6 +95,7 @@ def _agent_public_id(salt: bytes, a: dict) -> str:
 def build_public_feed(data: dict, salt: bytes) -> dict:
     """Assemble public feed from build.collect() data and salt."""
     built_str = data.get("builtAt") or store.iso(datetime.now(timezone.utc))
+    built_dt = _dt(built_str)
 
     products_raw = data.get("products", {})
     products = {}
@@ -96,11 +107,16 @@ def build_public_feed(data: dict, salt: bytes) -> dict:
     candidates = []
     seen: set[str] = set()
     for a in data.get("agents") or []:
-        if not isinstance(a, dict) or _s(a, "task").strip() == "probe":
+        if not isinstance(a, dict) or re.match(r"probe(\b|_)", _s(a, "task").strip(), re.I):
             continue
-        # done rows are not sent: the page shows only agents in the office
         state = _s(a, "state")
-        if state not in ("running", "waiting", "stalled"):
+        if state in ("done", "failed"):
+            # finished within IDLE_WINDOW: sits idle at the desk; older ones have left
+            ended = _dt(_s(a, "since"))
+            if not ended or not built_dt or not timedelta(0) <= built_dt - ended <= IDLE_WINDOW:
+                continue
+            state = "idle"
+        elif state not in ("running", "waiting", "stalled"):
             continue
         prod_key = _s(a, "product")
         if prod_key not in products:
@@ -113,6 +129,17 @@ def build_public_feed(data: dict, salt: bytes) -> dict:
         seen.add(pub_id)
         candidates.append((a, state, prod_key, pub_id))
 
+    # idle agents last, newest first, ties by id (input order puts failed before done and would show
+    # which failed), at most IDLE_PER_ROOM per product
+    idle = sorted((c for c in candidates if c[1] == "idle"), key=lambda c: (_since(_s(c[0], "since")), c[3]), reverse=True)
+    per_room: dict[str, int] = {}
+    kept = []
+    for c in idle:
+        per_room[c[2]] = per_room.get(c[2], 0) + 1
+        if per_room[c[2]] <= IDLE_PER_ROOM:
+            kept.append(c)
+    candidates = [c for c in candidates if c[1] != "idle"] + kept
+
     # Precompute public id mapping for parent resolution
     hc_to_id: dict[str, str] = {}
     for a, _, _, pub_id in candidates:
@@ -123,7 +150,7 @@ def build_public_feed(data: dict, salt: bytes) -> dict:
     public_agents = []
     for a, state, prod_key, pub_id in candidates:
         prod_name = products[prod_key]["name"]
-        label = _agent_label(_s(a, "task"), prod_name)
+        label = IDLE_LABEL.format(p=prod_name) if state == "idle" else _agent_label(_s(a, "task"), prod_name)
         provider = _agent_provider(_s(a, "provider"))
 
         parent_ref = _s(a, "parent")

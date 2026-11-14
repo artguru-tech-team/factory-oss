@@ -991,6 +991,19 @@ def list_jobs(product: str | None = None) -> list[dict]:
     return jobs
 
 
+def relay_off(rel_data: dict, product: str) -> str | None:
+    """Why relay() skips product ("shadow mode", "no thread", "paused"), or None when it relays its jobs."""
+    cfg = rel_data.get("products", {}).get(product) or {}
+    paused = rel_data.get("paused") or {}
+    if cfg.get("mode") != "live":
+        return "shadow mode"
+    if not cfg.get("thread"):
+        return "no thread"
+    if paused.get(product) or paused.get("*"):
+        return "paused"
+    return None
+
+
 def relay(now: datetime | None = None) -> dict:
     """Relay due comms jobs to release threads for live, configured products (deduped per Tunis day)."""
     from . import relay as relay_mod
@@ -1000,21 +1013,15 @@ def relay(now: datetime | None = None) -> dict:
 
     rel_data = release.release()
     configured = rel_data.get("products", {})
-    global_paused = bool((rel_data.get("paused") or {}).get("*"))
 
     out: dict[str, dict] = {}
     for product in comms_products():
         prod_cfg = configured[product]
-        if prod_cfg.get("mode") != "live":
-            out[product] = {"relayed": [], "skipped": "shadow mode", "error": None}
+        off = relay_off(rel_data, product)
+        if off:
+            out[product] = {"relayed": [], "skipped": off, "error": None}
             continue
-        thread = prod_cfg.get("thread")
-        if not thread:
-            out[product] = {"relayed": [], "skipped": "no thread", "error": None}
-            continue
-        if bool((rel_data.get("paused") or {}).get(product) or global_paused):
-            out[product] = {"relayed": [], "skipped": "paused", "error": None}
-            continue
+        thread = prod_cfg["thread"]
 
         try:
             due_jobs = due(product, now=now)

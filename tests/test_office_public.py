@@ -166,7 +166,7 @@ class TestOfficePublic(unittest.TestCase):
             },
             "agents": [
                 # Dropped states
-                {"hc": "F01", "product": "web", "state": "failed", "task": "web/feat/a"},
+                {"hc": "F01", "product": "web", "state": "failed", "task": "web/feat/a"},  # no since: dropped
                 {"hc": "Q02", "product": "web", "state": "quota", "task": "web/feat/b"},
                 {"hc": "U03", "product": "web", "state": "unknown", "task": "web/feat/c"},
                 # Probe task dropped
@@ -180,8 +180,8 @@ class TestOfficePublic(unittest.TestCase):
                 {"hc": "R08", "product": "web", "state": "running", "task": "web/feat/f"},
                 # Stalled kept as stalled
                 {"hc": "S09", "product": "web", "state": "stalled", "task": "web/feat/g"},
-                # Done dropped: the page shows only agents in the office
-                {"hc": "D10", "product": "web", "state": "done", "since": "2026-11-09T00:00:00Z", "task": "web/feat/h"},
+                # Done long ago: dropped
+                {"hc": "D10", "product": "web", "state": "done", "since": "2026-11-08T17:59:59Z", "task": "web/feat/h"},
             ],
         }
         feed = office_public.build_public_feed(data, salt)
@@ -210,6 +210,59 @@ class TestOfficePublic(unittest.TestCase):
                          ("Working on web", "AI agent", None, None))
         self.assertIsNone(feed["agents"][1]["since"])
         self.assertNotIn("vps-1", json.dumps(feed))
+
+    def test_recently_finished_agents_stay_idle(self):
+        salt = b"test-salt-bytes-1234567890123456"
+        data = {
+            "builtAt": "2026-11-09T12:00:00Z",
+            "products": {"web": {"name": "Web"}},
+            "agents": [
+                {"hc": "F0", "product": "web", "state": "failed", "since": "2026-11-09T09:00:00Z", "task": "web/fix/z"},
+                {"hc": "D0", "product": "web", "state": "done", "since": "2026-11-09T12:00:00Z", "task": "web/fix/y"},
+                {"hc": "D1", "product": "web", "state": "done", "since": "2026-11-09T11:00:00Z", "task": "web/fix/a"},
+                {"hc": "F2", "product": "web", "state": "failed", "since": "2026-11-09T06:00:00Z", "task": "web/feat/secret-name"},
+                {"hc": "D3", "product": "web", "state": "done", "since": "2026-11-09T05:59:59Z", "task": "web/feat/c"},
+                {"hc": "D4", "product": "web", "state": "done", "since": "2026-11-09T13:00:00Z", "task": "web/feat/d"},
+                {"hc": "F5", "product": "web", "state": "failed", "since": "not a date", "task": "web/feat/e"},
+            ],
+        }
+        agents = office_public.build_public_feed(data, salt)["agents"]
+        self.assertEqual([a["state"] for a in agents], ["idle"] * 4)
+        # newest first, failed or not: input order (failed rows first) must not survive
+        self.assertEqual([a["since"] for a in agents], ["2026-11-09T12:00:00Z", "2026-11-09T11:00:00Z",
+                                                        "2026-11-09T09:00:00Z", "2026-11-09T06:00:00Z"])
+        self.assertEqual({a["label"] for a in agents}, {"Between tasks on Web"})  # failed looks like done
+        self.assertEqual({tuple(sorted(a)) for a in agents}, {tuple(sorted(agents[0]))})
+
+    def test_idle_capped_per_room_newest_kept(self):
+        salt = b"test-salt-bytes-1234567890123456"
+        rows = [{"hc": f"W{i}", "product": "web", "state": "failed", "since": f"2026-11-09T1{i}:00:00Z"} for i in range(6)]
+        rows += [{"hc": "A1", "product": "api", "state": "done", "since": "2026-11-09T10:00:00Z"},
+                 {"hc": "R1", "product": "web", "state": "running", "parent": "W0"}]
+        data = {"builtAt": "2026-11-09T16:00:00Z", "products": {"web": {"name": "Web"}, "api": {"name": "Api"}}, "agents": rows}
+        agents = office_public.build_public_feed(data, salt)["agents"]
+        web_idle = [a["since"] for a in agents if a["product"] == "web" and a["state"] == "idle"]
+        self.assertEqual(web_idle, [f"2026-11-09T1{i}:00:00Z" for i in (5, 4, 3, 2)])
+        self.assertEqual([a["product"] for a in agents if a["state"] == "idle"].count("api"), 1)
+        self.assertIsNone(next(a for a in agents if a["state"] == "running")["parent"])  # W0 was capped out
+
+    def test_probe_variants_dropped(self):
+        salt = b"test-salt-bytes-1234567890123456"
+        rows = [{"hc": f"P{i}", "product": "web", "state": "running", "task": t}
+                for i, t in enumerate(["probe", "probe ag2", " probe-4", "PROBE x", "probe_ag2", "probes/feat/x", "web/fix/probe"])]
+        data = {"builtAt": "2026-11-09T16:00:00Z", "products": {"web": {"name": "Web"}}, "agents": rows}
+        self.assertEqual(len(office_public.build_public_feed(data, salt)["agents"]), 2)  # probes/feat/x, web/fix/probe
+
+    def test_odd_timestamps_drop_the_row_not_the_office(self):
+        salt = b"test-salt-bytes-1234567890123456"
+        data = {"builtAt": "2026-11-09T12:00:00Z", "products": {"web": {"name": "Web"}},
+                "agents": [{"hc": "O1", "product": "web", "state": "done", "since": "0001-01-01T00:30:00+01:00"},
+                           {"hc": "R1", "product": "web", "state": "running", "since": "2026-11-09T11:00:00Z"}]}
+        agents = office_public.build_public_feed(data, salt)["agents"]
+        self.assertEqual([a["state"] for a in agents], ["running"])
+        data["builtAt"] = 12345  # not a string: idle rows dropped, live rows kept
+        data["agents"][0]["since"] = "2026-11-09T11:00:00Z"
+        self.assertEqual([a["state"] for a in office_public.build_public_feed(data, salt)["agents"]], ["running"])
 
     def test_since_is_normalised(self):
         salt = b"test-salt-bytes-1234567890123456"

@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
-from factory import board, build, serve, sources, store
+from factory import board, build, config, serve, sources, store
 
 NOW = datetime(2026, 10, 27, 12, 0, tzinfo=timezone.utc)
 
@@ -209,6 +209,14 @@ class ActionTest(Base):
         ])
         self.assertEqual(store.read("board-cache.json", {})["cards"][0]["col"], "triage")
 
+    def test_promote_answered_outlier_drops_needs_decision(self):
+        self.seed_card(col="waiting")
+        with mock.patch.object(board, "_issue_state", return_value=("open", {"intake", "needs-decision"})), \
+             mock.patch.object(board, "_ensure_label"), mock.patch.object(sources, "run") as run:
+            board.act("promote", "o/r", 142)
+        run.assert_any_call("gh", "issue", "edit", "142", "--repo", "o/r", "--add-label", "factory",
+                            "--remove-label", "intake", "--remove-label", "needs-decision")
+
     def test_close_exact_commands(self):
         self.seed_card(col="review", pr={"number": 44, "repo": "o/r", "url": "u"})
         with mock.patch.object(sources, "run") as run:
@@ -336,6 +344,8 @@ class ServeBoardTest(Base):
         data = serve.board_data()
         self.assertEqual(data["cards"], [{"id": "o/r#1"}])
         self.assertTrue(data["auto_promote"])
+        config.set_value("fixlane.max_per_day", "5")
+        self.assertEqual(serve.board_data()["max_per_day"], 5)
 
 
 class TimelineTest(Base):
@@ -384,6 +394,7 @@ class BuildBoardTest(Base):
             data = build.board_data(store.products(), NOW, warnings)
         self.assertEqual(data["error"], "gh down")
         self.assertEqual(data["auto_promote"], True)
+        self.assertEqual(data["max_per_day"], 3)  # the lane default
         self.assertTrue(any(w.startswith("board: gh down") for w in warnings))
 
     def test_build_warns_per_failed_repo(self):

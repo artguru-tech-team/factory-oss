@@ -8,6 +8,7 @@ import posixpath
 import re
 import shlex
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -389,6 +390,13 @@ def unreleased_prs(product: dict) -> tuple[list[dict], str | None, list[str]]:
     commits = compare.get("commits") or []
     total_commits = compare.get("total_commits", 0)
     if total_commits > len(commits):
+        # One compare response stops at 250 commits: read them all again, 100 per page.
+        commits = []
+        for page in range(1, total_commits // 100 + 2):
+            more = sources.gh_json("api", f"repos/{repo}/compare/{head}...{base_sha}?per_page=100&page={page}")
+            commits += (more or {}).get("commits") or []
+        commits = list({c["sha"]: c for c in commits}.values())  # main moving between pages must not fake a full read
+    if total_commits > len(commits):
         raise FactoryError(f"compare truncated: {len(commits)} of {total_commits} commits")
 
     unmapped_commits = []
@@ -482,7 +490,11 @@ def decide(
         else:
             unmapped_reason = f"{unmapped_count} commit(s) on develop without a PR: not shipped"
 
-    prs_sorted = sorted(prs, key=lambda p: p.get("mergedAt", ""))
+    # Oldest first, except PRs the owner moved to the front (`factory release queue-action <repo>#<n> front`):
+    # they come first, so they make the 10-PR cap and are the red that ships solo.
+    repo = ((state.get("products", {}) or {}).get(product, {}).get("repo") or "").lower()
+    fronted = {k.lower() for k, v in (state.get("queue_actions") or {}).items() if isinstance(v, dict) and "front" in v}
+    prs_sorted = sorted(prs, key=lambda p: (f"{repo}#{p['number']}" not in fronted, p.get("mergedAt", "")))
 
     candidate_prs = []
     no_release_prs = []
@@ -588,7 +600,7 @@ def decide(
     kept_score = _score(kept)
 
     if not red_prs and kept_score != "red":
-        ship_prs = kept
+        ship_prs = sorted(kept, key=lambda p: p.get("mergedAt", ""))  # cherry-pick in merge order
         count = len(ship_prs)
         if len(ship_prs) == len(prs) and unmapped_count == 0:
             verdict = "ship-all"
@@ -783,6 +795,9 @@ def resume(product: str = "*") -> dict:
     return data["paused"]
 
 
+UNHOLD_AFTER = timedelta(hours=24)  # a rollback hold can be lifted after this
+
+
 def unhold(product: str, now: datetime | None = None) -> dict:
     with store.lock():
         data = release()
@@ -799,8 +814,8 @@ def unhold(product: str, now: datetime | None = None) -> dict:
             raise FactoryError(f"corrupt hold on {product}: unparsable since {since_str!r}") from e
         now_utc = _now_utc(now)
         elapsed = now_utc - since_dt
-        if elapsed < timedelta(hours=24):
-            rem = timedelta(hours=24) - elapsed
+        if elapsed < UNHOLD_AFTER:
+            rem = UNHOLD_AFTER - elapsed
             rem_hours = rem.total_seconds() / 3600
             rem_str = f"{int(rem_hours)}" if rem_hours == int(rem_hours) else f"{rem_hours:.1f}"
             raise FactoryError(f"hold on {product} is under 24h old: {rem_str} hours remain")
@@ -968,6 +983,76 @@ def _queue_today_if_any(name: str, now) -> dict | None:
         return None
     asks_to_check = q.get("asks_new") if "asks_new" in q else q.get("asks")
     return q if (q.get("merge") or q.get("agents") or q.get("pending_actions") or asks_to_check) else None
+
+
+def claim_queue_relay(name: str, day: str) -> dict | None:
+    """Mark today's queue message for `name` as sent, once. Returns a copy of the verdict, or None when
+    there is no verdict for `day` or another run already claimed it."""
+    with store.lock():
+        cur_state = release()
+        v_today = cur_state.get("verdicts", {}).get(day, {}).get(name)
+        if not v_today or v_today.get("queue_relayed"):
+            return None
+        v_today["queue_relayed"] = day
+        save_release(cur_state)
+        return copy.deepcopy(v_today)
+
+
+class QueueRelayError(FactoryError):
+    """The queue message could not be sent; the claim was released and queueRelayError stored."""
+
+
+def send_queue_relay(name: str, q_today: dict, day: str, now: datetime | None = None) -> bool:
+    """Claim, send and book today's queue message for `name`. False when another run already claimed it.
+    On a failed send the claim is released (queue_relayed False, queueRelayError) and the error re-raised."""
+    if claim_queue_relay(name, day) is None:
+        return False
+    prod_cfg = (release().get("products") or {}).get(name) or {}
+    try:
+        relay.enqueue_message(prod_cfg["thread"], queue_message(name, q_today, now=now), kind="release")
+    except Exception as e:
+        try:
+            with store.lock():
+                cur_state = release()
+                if name in cur_state.get("verdicts", {}).get(day, {}):
+                    cur_state["verdicts"][day][name]["queue_relayed"] = False
+                    cur_state["verdicts"][day][name]["queueRelayError"] = str(e)
+                    save_release(cur_state)
+        except Exception as e2:  # still report the failed send, so the caller's loop goes on
+            print(f"could not release the queue relay claim for {name}: {e2}", file=sys.stderr)
+        raise QueueRelayError(str(e)) from e
+    try:
+        _book_queue_relay(name, q_today, day, prod_cfg)
+    except Exception as e:  # the message went out: keep the claim, never resend over a bookkeeping error
+        print(f"queue relay bookkeeping failed for {name}: {e}", file=sys.stderr)
+    return True
+
+
+def _book_queue_relay(name: str, q_today: dict, day: str, prod_cfg: dict) -> None:
+    """After a sent queue message: clear an old send error and remember which asks were sent."""
+    with store.lock():
+        cur_state = release()
+        v = cur_state.get("verdicts", {}).get(day, {}).get(name)
+        cleared = v is not None and v.pop("queueRelayError", None) is not None
+        if not cleared and not q_today.get("asks_new"):
+            return  # nothing to write
+        if q_today.get("asks_new"):
+            q_asked = cur_state.setdefault("queue_asked", {}).setdefault(name, [])
+            repo = prod_cfg.get("repo", "")
+            prod_snap = (cur_state.get("queue", {}).get("products") or {}).get(name)
+            if prod_snap is not None and "prs" in prod_snap:
+                current_nums = {p["number"] for p in prod_snap.get("prs", []) if isinstance(p, dict) and "number" in p}
+                def _pr_num(k: str) -> int | None:
+                    m = re.search(r"#(\d+)(?::|$)", k)
+                    return int(m.group(1)) if m else None
+                q_asked = [k for k in q_asked if _pr_num(k) in current_nums]
+            for a in q_today.get("asks_new", []):
+                st = (a.get("classification") or {}).get("status", "")
+                k = f"{repo}#{a['number']}:{st}" if st else f"{repo}#{a['number']}"
+                if k not in q_asked:
+                    q_asked.append(k)
+            cur_state["queue_asked"][name] = q_asked
+        save_release(cur_state)
 
 
 def queue_message(product: str, q: dict, now: datetime | None = None) -> str:
@@ -1376,47 +1461,11 @@ def plan(now: datetime | None = None, only: str | None = None, dry: bool = False
         if not q_today:
             continue
 
-        with store.lock():
-            cur_state = release()
-            v_today = cur_state.get("verdicts", {}).get(today_tunis, {}).get(name)
-            if not v_today or v_today.get("queue_relayed"):
-                continue
-            v_today["queue_relayed"] = today_tunis
-            save_release(cur_state)
-            claimed_v = copy.deepcopy(v_today)
-
-        prod_cfg = products_cfg[name]
-        thread = prod_cfg["thread"]
-        msg = queue_message(name, q_today, now=now)
         try:
-            relay.enqueue_message(thread, msg, kind="release")
-            actually_relayed.add(name)
-            if q_today.get("asks_new"):
-                with store.lock():
-                    cur_state = release()
-                    q_asked = cur_state.setdefault("queue_asked", {}).setdefault(name, [])
-                    repo = prod_cfg.get("repo", "")
-                    prod_snap = (cur_state.get("queue", {}).get("products") or {}).get(name)
-                    if prod_snap is not None and "prs" in prod_snap:
-                        current_nums = {p["number"] for p in prod_snap.get("prs", []) if isinstance(p, dict) and "number" in p}
-                        def _pr_num(k: str) -> int | None:
-                            m = re.search(r"#(\d+)(?::|$)", k)
-                            return int(m.group(1)) if m else None
-                        q_asked = [k for k in q_asked if _pr_num(k) in current_nums]
-                    for a in q_today.get("asks_new", []):
-                        st = (a.get("classification") or {}).get("status", "")
-                        k = f"{repo}#{a['number']}:{st}" if st else f"{repo}#{a['number']}"
-                        if k not in q_asked:
-                            q_asked.append(k)
-                    cur_state["queue_asked"][name] = q_asked
-                    save_release(cur_state)
-        except Exception as e:
-            with store.lock():
-                cur_state = release()
-                if name in cur_state.get("verdicts", {}).get(today_tunis, {}):
-                    cur_state["verdicts"][today_tunis][name]["queue_relayed"] = False
-                    cur_state["verdicts"][today_tunis][name]["queueRelayError"] = str(e)
-                    save_release(cur_state)
+            if send_queue_relay(name, q_today, today_tunis, now=now):
+                actually_relayed.add(name)
+        except QueueRelayError:
+            pass  # send_queue_relay released the claim and stored queueRelayError
 
     final_state = release()
     stored_today = final_state.get("verdicts", {}).get(today_tunis, {})
